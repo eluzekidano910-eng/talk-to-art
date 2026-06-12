@@ -56,6 +56,11 @@ export class VoiceRecognizer {
     return this._state;
   }
 
+  /** 实例是否构造成功 */
+  isReady(): boolean {
+    return this.recognition !== null;
+  }
+
   /** 是否正在监听 */
   isListening(): boolean {
     return this._state === 'listening';
