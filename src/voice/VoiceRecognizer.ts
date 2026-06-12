@@ -1,17 +1,22 @@
 import type { VoiceRecognizerConfig, VoiceRecognizerCallbacks, VoiceResult, VoiceState } from './types';
 
+/** 用户不说话多少毫秒后自动停止 */
+const SILENCE_TIMEOUT = 5000;
+
 /**
  * 浏览器语音识别服务层
  * 封装 Web Speech API (SpeechRecognition)，提供：
  * - 实时逐字识别（interim results）
  * - 最终结果回调
  * - 连续/单次两种模式
+ * - 5 秒静音自动停止
  * - 错误优雅降级
  */
 export class VoiceRecognizer {
   private recognition: SpeechRecognition | null = null;
   private _state: VoiceState = 'idle';
   private _userStopped = false;
+  private _silenceTimer: ReturnType<typeof setTimeout> | null = null;
   private callbacks: VoiceRecognizerCallbacks = {};
   private config: Required<VoiceRecognizerConfig>;
 
@@ -76,11 +81,11 @@ export class VoiceRecognizer {
     if (this._state === 'listening') return;
 
     this._userStopped = false;
+    this.clearSilenceTimer();
 
     try {
       this.recognition.start();
     } catch (_err) {
-      // 可能识别器已在运行中，尝试 abort 后重试
       try { this.recognition.abort(); } catch { /* ignore */ }
       setTimeout(() => {
         try { this.recognition?.start(); } catch { /* ignore */ }
@@ -91,12 +96,14 @@ export class VoiceRecognizer {
   /** 停止监听（处理完已有语音） */
   stop(): void {
     this._userStopped = true;
+    this.clearSilenceTimer();
     try { this.recognition?.stop(); } catch { /* ignore */ }
   }
 
   /** 立即中止（丢弃已有语音） */
   abort(): void {
     this._userStopped = true;
+    this.clearSilenceTimer();
     try { this.recognition?.abort(); } catch { /* ignore */ }
   }
 
@@ -112,26 +119,47 @@ export class VoiceRecognizer {
     this.callbacks = {};
   }
 
+  // ── 静音计时器 ──
+
+  private startSilenceTimer(): void {
+    this.clearSilenceTimer();
+    this._silenceTimer = setTimeout(() => {
+      // 5 秒没说话 → 自动停止
+      this.stop();
+    }, SILENCE_TIMEOUT);
+  }
+
+  private clearSilenceTimer(): void {
+    if (this._silenceTimer !== null) {
+      clearTimeout(this._silenceTimer);
+      this._silenceTimer = null;
+    }
+  }
+
   // ── 内部事件绑定 ──
 
   private bindEvents(): void {
     if (!this.recognition) return;
 
     this.recognition.onstart = () => {
+      // 用户又说话了，清除静音倒计时
+      this.clearSilenceTimer();
       this.setState('listening');
       this.callbacks.onStart?.();
     };
 
     this.recognition.onend = () => {
-      // 用户主动停止 → 回到 idle，不自动重启
+      // 用户主动停止 → 回到 idle
       if (this._userStopped) {
         this.setState('idle');
         this.callbacks.onEnd?.();
         return;
       }
-      // 自动结束（说完一句话） → 自动重启，保持持续对话
+      // 一句说完 → 重启识别 + 启动静音倒计时
+      this.startSilenceTimer();
+      // 延迟重启（等浏览器状态稳定）
       setTimeout(() => {
-        if (!this._userStopped && this._state !== 'idle') {
+        if (!this._userStopped) {
           try { this.recognition?.start(); } catch { /* ignore */ }
         }
       }, 200);
@@ -155,7 +183,6 @@ export class VoiceRecognizer {
         maxConfidence = Math.max(maxConfidence, confidence);
       }
 
-      // 优先发送最终结果，否则发送中间结果
       if (finalText) {
         const voiceResult: VoiceResult = {
           text: finalText.trim(),
@@ -163,6 +190,8 @@ export class VoiceRecognizer {
           confidence: maxConfidence,
         };
         this.callbacks.onResult?.(voiceResult);
+        // 收到最终结果 → 重置静音倒计时
+        this.startSilenceTimer();
       } else if (interimText) {
         const voiceResult: VoiceResult = {
           text: interimText.trim(),
@@ -189,8 +218,7 @@ export class VoiceRecognizer {
 
       // no-speech 不算真正错误，静默处理
       if (event.error === 'no-speech') {
-        // 非连续模式下自动重启
-        if (!this.config.continuous && this._state === 'listening') {
+        if (!this._userStopped) {
           setTimeout(() => {
             try { this.recognition?.start(); } catch { /* ignore */ }
           }, 300);
