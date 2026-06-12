@@ -34,7 +34,15 @@ export class VoiceRecognizer {
       return;
     }
 
-    this.recognition = new SR();
+    try {
+      this.recognition = new SR();
+    } catch (err) {
+      console.warn('[VoiceRecognizer] SpeechRecognition 构造失败', err);
+      return;
+    }
+
+    if (!this.recognition) return;
+
     this.recognition.lang = this.config.lang;
     this.recognition.continuous = this.config.continuous;
     this.recognition.interimResults = this.config.interimResults;
