@@ -105,14 +105,17 @@ export class VoiceRecognizer {
     };
 
     this.recognition.onend = () => {
-      // continuous=true 时 onend 仅在不说话超时后触发，
-      // 我们需要在非 continuous 模式下自动重启以保持持续对话
-      if (this._state === 'listening' && !this.config.continuous) {
-        // 非连续模式：说完一句自动重启，等待下一句
-        this.setState('idle');
-      } else {
-        this.setState('idle');
+      // 用户仍处于监听模式下 → 自动重启，保持持续对话
+      if (this._state === 'listening') {
+        setTimeout(() => {
+          if (this._state === 'listening') {
+            try { this.recognition?.start(); } catch { /* ignore */ }
+          }
+        }, 200);
+        return; // 不触发 onEnd 回调，因为仍在监听中
       }
+      // 用户主动停止 → 回到 idle
+      this.setState('idle');
       this.callbacks.onEnd?.();
     };
 
