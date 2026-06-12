@@ -18,14 +18,13 @@ function App() {
     if (!recognizerRef.current && VoiceRecognizer.isSupported()) {
       try {
         recognizerRef.current = new VoiceRecognizer(
-          { lang: 'zh-CN', continuous: false, interimResults: true },
+          { lang: 'zh-CN', continuous: true, interimResults: true },
           {
             onResult: (result: VoiceResult) => {
               setVoiceText(result.text);
               setIsFinal(result.isFinal);
               if (result.isFinal) {
                 setVoiceState('processing');
-                setTimeout(() => setVoiceState('idle'), 1500);
               }
             },
             onStateChange: (state: VoiceState) => {
@@ -34,7 +33,7 @@ function App() {
             onError: (error: string) => {
               setVoiceState('error');
               setVoiceText(error);
-              setTimeout(() => setVoiceState('idle'), 3000);
+              setIsFinal(false);
             },
           },
         );
@@ -61,21 +60,25 @@ function App() {
     const rec = getRecognizer();
     if (!rec) return;
 
-    if (rec.isListening()) {
+    if (voiceState !== 'idle' || rec.isListening()) {
       rec.stop();
-      setVoiceText('');
-      setIsFinal(false);
     } else {
       setVoiceText('');
       setIsFinal(false);
       rec.start();
     }
-  }, [getRecognizer]);
+  }, [getRecognizer, voiceState]);
 
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-[#0f0f0f]">
       {/* 画布占位 — 后续替换为 Fabric Canvas */}
       <div className="w-full h-full bg-[#1a1a1a]" />
+
+      {initError && (
+        <div className="absolute top-6 right-6 z-50 max-w-sm rounded-xl border border-red-400/30 bg-red-500/15 px-4 py-3 text-sm text-red-200 shadow-2xl">
+          {initError}
+        </div>
+      )}
 
       {/* 语音气泡 */}
       <SpeechBubble

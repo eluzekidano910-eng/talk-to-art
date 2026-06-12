@@ -26,7 +26,7 @@ export function MicButton({ isListening, state, onToggle, supported }: MicButton
     );
   }
 
-  const isActive = isListening || state === 'processing';
+  const isActive = isListening || state === 'processing' || state === 'error';
 
   return (
     <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3">
@@ -101,7 +101,7 @@ export function MicButton({ isListening, state, onToggle, supported }: MicButton
         text-xs transition-colors duration-200
         ${isActive ? 'text-red-400' : 'text-white/40'}
       `}>
-        {isActive ? '监听中...' : '点击开始'}
+        {state === 'error' ? '点击关闭' : isActive ? '监听中...' : '点击开始'}
       </span>
     </div>
   );

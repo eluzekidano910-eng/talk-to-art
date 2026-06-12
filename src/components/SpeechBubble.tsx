@@ -23,11 +23,11 @@ export function SpeechBubble({ text, isFinal, state }: SpeechBubbleProps) {
     if (state === 'listening' || state === 'processing') {
       setVisible(true);
     } else if (state === 'idle') {
-      // 最终结果后延迟隐藏
-      if (isFinal && text) {
-        const timer = setTimeout(() => setVisible(false), 2000);
-        return () => clearTimeout(timer);
+      if (text) {
+        setVisible(true);
+        return;
       }
+      setVisible(false);
     }
   }, [state, isFinal, text]);
 
