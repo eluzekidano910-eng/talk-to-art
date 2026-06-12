@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(claude config *)",
+      "Bash(curl -fsSL https://github.com/taekchef/claude-code-zh-cn/releases/latest/download/install-remote.sh)",
+      "Bash(bash)",
+      "Bash(npm install *)",
+      "Bash(claude-code-zh-cn --help)",
+      "Bash(npx claude-code-zh-cn *)",
+      "Bash(npm root *)",
+      "Bash(ls \"$\\(npm root -g\\)/claude-code-zh-cn/\")",
+      "Bash(cat \"$\\(npm root -g\\)/claude-code-zh-cn/package.json\")",
+      "Bash(cat \"$\\(npm root -g\\)/claude-code-zh-cn/README.md\")",
+      "Bash(ls \"$\\(npm root -g\\)/claude-code-zh-cn/scripts/\")",
+      "Bash(claude-code-zh --version)",
+      "Bash(claude-code-zh *)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh repo *)",
+      "Bash(git clone *)"
+    ]
+  }
+}
