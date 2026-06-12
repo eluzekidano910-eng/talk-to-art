@@ -11,6 +11,7 @@ import type { VoiceRecognizerConfig, VoiceRecognizerCallbacks, VoiceResult, Voic
 export class VoiceRecognizer {
   private recognition: SpeechRecognition | null = null;
   private _state: VoiceState = 'idle';
+  private _userStopped = false;
   private callbacks: VoiceRecognizerCallbacks = {};
   private config: Required<VoiceRecognizerConfig>;
 
@@ -74,6 +75,8 @@ export class VoiceRecognizer {
     }
     if (this._state === 'listening') return;
 
+    this._userStopped = false;
+
     try {
       this.recognition.start();
     } catch (_err) {
@@ -87,11 +90,13 @@ export class VoiceRecognizer {
 
   /** 停止监听（处理完已有语音） */
   stop(): void {
+    this._userStopped = true;
     try { this.recognition?.stop(); } catch { /* ignore */ }
   }
 
   /** 立即中止（丢弃已有语音） */
   abort(): void {
+    this._userStopped = true;
     try { this.recognition?.abort(); } catch { /* ignore */ }
   }
 
@@ -118,18 +123,18 @@ export class VoiceRecognizer {
     };
 
     this.recognition.onend = () => {
-      // 用户仍处于监听模式下 → 自动重启，保持持续对话
-      if (this._state === 'listening') {
-        setTimeout(() => {
-          if (this._state === 'listening') {
-            try { this.recognition?.start(); } catch { /* ignore */ }
-          }
-        }, 200);
-        return; // 不触发 onEnd 回调，因为仍在监听中
+      // 用户主动停止 → 回到 idle，不自动重启
+      if (this._userStopped) {
+        this.setState('idle');
+        this.callbacks.onEnd?.();
+        return;
       }
-      // 用户主动停止 → 回到 idle
-      this.setState('idle');
-      this.callbacks.onEnd?.();
+      // 自动结束（说完一句话） → 自动重启，保持持续对话
+      setTimeout(() => {
+        if (!this._userStopped && this._state !== 'idle') {
+          try { this.recognition?.start(); } catch { /* ignore */ }
+        }
+      }, 200);
     };
 
     this.recognition.onresult = (event: SpeechRecognitionEvent) => {
