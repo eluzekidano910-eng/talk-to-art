@@ -43,13 +43,19 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): void {
       }
       break;
     }
+    case 'undo':
+      engine.undo();
+      break;
+    case 'redo':
+      engine.redo();
+      break;
     case 'clear':
       engine.clear();
       break;
-  }
-}
+   }
+ }
 
-function App() {
+ function App() {
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [voiceText, setVoiceText] = useState('');
   const [isFinal, setIsFinal] = useState(false);
