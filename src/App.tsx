@@ -1,10 +1,51 @@
 import { useCallback, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import { VoiceRecognizer } from './voice';
 import type { VoiceResult, VoiceState } from './voice';
 import { SpeechBubble } from './components/SpeechBubble';
 import { MicButton } from './components/MicButton';
 import { DrawingCanvas } from './canvas';
 import type { DrawingCanvasHandle } from './canvas';
+import { CanvasEngine } from './canvas';
+import { CommandParser } from './command';
+import type { Command } from './command';
+import type { DrawShapeOptions, ShapeSize, ShapePosition } from './canvas';
+
+/**
+ * 执行解析后的语音命令，在画布上绘制或操作
+ */
+function executeCanvasCommand(engine: CanvasEngine, cmd: Command): void {
+  const params = cmd.params ?? {};
+
+  switch (cmd.intent) {
+    case 'draw': {
+      const shape = params.shape as string;
+      const options: DrawShapeOptions = {};
+      if (typeof params.color === 'string') options.color = params.color;
+      if (typeof params.size === 'string') options.size = params.size as ShapeSize;
+      if (typeof params.position === 'string') options.position = params.position as ShapePosition;
+
+      switch (shape) {
+        case 'circle':
+          engine.drawCircle(options);
+          break;
+        case 'rect':
+          engine.drawRect(options);
+          break;
+        case 'triangle':
+          engine.drawTriangle(options);
+          break;
+        case 'line':
+          engine.drawLine(options);
+          break;
+      }
+      break;
+    }
+    case 'clear':
+      engine.clear();
+      break;
+  }
+}
 
 function App() {
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
@@ -15,6 +56,21 @@ function App() {
 
   const [supported, setSupported] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
+
+  // 语音最终结果 → 解析 → 执行画布命令
+  useEffect(() => {
+    if (!isFinal || !voiceText) return;
+
+    const engine = canvasRef.current?.engine;
+    if (!engine) return;
+
+    const parser = new CommandParser();
+    const commands = parser.parse(voiceText);
+
+    for (const cmd of commands) {
+      executeCanvasCommand(engine, cmd);
+    }
+  }, [isFinal, voiceText]);
 
   // 获取或创建识别器实例
   const getRecognizer = useCallback(() => {
