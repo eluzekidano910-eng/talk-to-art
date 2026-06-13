@@ -1,6 +1,7 @@
 ﻿import type { Command, CommandIntent, ShapeType, ParseResult, NormalizedToken } from './types';
 import { lookupColor } from './dictionary/colors';
 import { lookupSize } from './dictionary/sizes';
+import { lookupPosition } from './dictionary/positions';
 
 /**
  * 将拆分后的单句解析为一个 Command
@@ -200,17 +201,7 @@ function resolveSizeToken(text: string): string | null {
 }
 
 function resolvePositionToken(text: string): string | null {
-  // commit 4 前只做基础检测
-  if (/(左上|左上角)/.test(text)) return 'top-left';
-  if (/(上[方边面]|上面|顶部)/.test(text)) return 'top-center';
-  if (/(右上|右上角)/.test(text)) return 'top-right';
-  if (/(左[方边面]|左边|左侧)/.test(text)) return 'center-left';
-  if (/(中[间央]|正中|中央|正中间)/.test(text)) return 'center';
-  if (/(右[方边面]|右边|右侧)/.test(text)) return 'center-right';
-  if (/(左下|左下角)/.test(text)) return 'bottom-left';
-  if (/(下[方边面]|下面|底部|底下)/.test(text)) return 'bottom-center';
-  if (/(右下|右下角)/.test(text)) return 'bottom-right';
-  return null;
+  return lookupPosition(text);
 }
 
 function resolveSemanticName(text: string): string | null {
