@@ -1,5 +1,5 @@
 /** 语音识别状态 */
-export type VoiceState = 'idle' | 'listening' | 'processing' | 'error';
+export type VoiceState = 'idle' | 'standby' | 'listening' | 'processing' | 'error';
 
 /** 语音识别结果 */
 export interface VoiceResult {

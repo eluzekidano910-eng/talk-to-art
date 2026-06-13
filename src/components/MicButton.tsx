@@ -101,7 +101,7 @@ export function MicButton({ isListening, state, onToggle, supported }: MicButton
         text-xs transition-colors duration-200
         ${isActive ? 'text-red-400' : 'text-white/40'}
       `}>
-        {state === 'error' ? '点击关闭' : isActive ? '监听中...' : '点击开始'}
+        {state === 'error' ? '点击关闭' : state === 'standby' ? '小A待命' : isActive ? '监听中...' : '点击开始'}
       </span>
     </div>
   );

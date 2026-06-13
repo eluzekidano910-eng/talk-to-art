@@ -17,7 +17,6 @@ import { SoundPlayer } from './voice';
 /**
  * 执行解析后的语音命令，在画布上绘制或操作
  */
-function executeCanvasCommand(engine: CanvasEngine, cmd: Command): void {
 function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
   const params = cmd.params ?? {};
 
@@ -85,6 +84,7 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
 
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const logIdRef = useRef(0);
+  const autoStartedRef = useRef(false);
 
   // 语音最终结果 → 解析 → 执行 → 音效 + 日志
   useEffect(() => {
@@ -103,6 +103,21 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
         id: ++logIdRef.current, rawText: voiceText, commands: [],
         status: 'error', error: '未识别为有效指令',
       }].slice(-50));
+      return;
+    }
+
+    // 语音控制：休眠/唤醒（直接操作识别器，不经过画布）
+    if (commands.some(c => c.intent === 'sleep' || c.intent === 'wake')) {
+      const isSleep = commands.some(c => c.intent === 'sleep');
+      if (isSleep) recognizerRef.current?.stop();
+      else recognizerRef.current?.start();
+      soundPlayerRef.current?.play('ready');
+      setLogEntries(prev => [...prev, {
+        id: ++logIdRef.current, rawText: voiceText,
+        commands: commands.map(c => ({ intent: c.intent, params: {} })),
+        status: 'success',
+      }].slice(-50));
+      if (recognizerRef.current?.isListening()) setVoiceState('listening');
       return;
     }
 
@@ -170,6 +185,24 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
     }
     return recognizerRef.current;
   }, []);
+
+  // 首次点击页面任意位置自动启动麦克风（浏览器需要用户手势）
+  useEffect(() => {
+    const handler = () => {
+      if (autoStartedRef.current) return;
+      autoStartedRef.current = true;
+      const rec = getRecognizer();
+      if (rec?.isReady() && !rec.isListening()) {
+        setVoiceText('');
+        setIsFinal(false);
+        rec.start();
+        setVoiceState('standby');
+      }
+      document.removeEventListener('click', handler);
+    };
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [getRecognizer]);
 
   // 切换麦克风
   const handleToggle = useCallback(() => {

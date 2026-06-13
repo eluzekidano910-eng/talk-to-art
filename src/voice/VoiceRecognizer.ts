@@ -1,7 +1,7 @@
 import type { VoiceRecognizerConfig, VoiceRecognizerCallbacks, VoiceResult, VoiceState } from './types';
 
 /** 用户不说话多少毫秒后自动停止 */
-const SILENCE_TIMEOUT = 8000;
+const SILENCE_TIMEOUT = 300000;
 
 /**
  * 浏览器语音识别服务层

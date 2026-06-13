@@ -20,7 +20,7 @@ export function SpeechBubble({ text, isFinal, state }: SpeechBubbleProps) {
 
   // 控制可见性
   useEffect(() => {
-    if (state === 'listening' || state === 'processing') {
+    if (state === 'listening' || state === 'processing' || state === 'standby') {
       setVisible(true);
     } else if (state === 'idle') {
       if (text) {
