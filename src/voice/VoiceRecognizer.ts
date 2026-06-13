@@ -1,4 +1,4 @@
-import type { VoiceRecognizerConfig, VoiceRecognizerCallbacks, VoiceResult, VoiceState } from './types';
+﻿import type { VoiceRecognizerConfig, VoiceRecognizerCallbacks, VoiceResult, VoiceState } from './types';
 
 /**
  * 浏览器语音识别服务层
@@ -135,17 +135,11 @@ export class VoiceRecognizer {
       }
 
       // 优先发送最终结果，否则发送中间结果
-      if (finalText) {
+      const resultText = finalText || interimText;
+      if (resultText) {
         const voiceResult: VoiceResult = {
-          text: finalText.trim(),
-          isFinal: true,
-          confidence: maxConfidence,
-        };
-        this.callbacks.onResult?.(voiceResult);
-      } else if (interimText) {
-        const voiceResult: VoiceResult = {
-          text: interimText.trim(),
-          isFinal: false,
+          text: resultText.trim(),
+          isFinal: !!finalText,
           confidence: maxConfidence,
         };
         this.callbacks.onResult?.(voiceResult);
