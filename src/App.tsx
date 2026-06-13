@@ -3,12 +3,15 @@ import { VoiceRecognizer } from './voice';
 import type { VoiceResult, VoiceState } from './voice';
 import { SpeechBubble } from './components/SpeechBubble';
 import { MicButton } from './components/MicButton';
+import { DrawingCanvas } from './canvas';
+import type { DrawingCanvasHandle } from './canvas';
 
 function App() {
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [voiceText, setVoiceText] = useState('');
   const [isFinal, setIsFinal] = useState(false);
   const recognizerRef = useRef<VoiceRecognizer | null>(null);
+  const canvasRef = useRef<DrawingCanvasHandle>(null);
 
   const [supported, setSupported] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
@@ -71,8 +74,7 @@ function App() {
 
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-[#0f0f0f]">
-      {/* 画布占位 — 后续替换为 Fabric Canvas */}
-      <div className="w-full h-full bg-[#1a1a1a]" />
+      <DrawingCanvas ref={canvasRef} className="absolute inset-0" />
 
       {initError && (
         <div className="absolute top-6 right-6 z-50 max-w-sm rounded-xl border border-red-400/30 bg-red-500/15 px-4 py-3 text-sm text-red-200 shadow-2xl">
