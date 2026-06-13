@@ -41,6 +41,9 @@ function resolveColor(color: string | undefined): string {
 
 export class CanvasEngine {
   readonly canvas: Canvas;
+  private history: string[] = [];
+  private historyIndex: number = -1;
+  private readonly MAX_HISTORY = 50;
 
   constructor(canvasEl: HTMLCanvasElement) {
     this.canvas = new Canvas(canvasEl, {
@@ -50,6 +53,7 @@ export class CanvasEngine {
       selection: true,
       preserveObjectStacking: true,
     });
+    this.saveState(); // 保存初始空白状态
   }
 
   get width(): number {
@@ -63,6 +67,7 @@ export class CanvasEngine {
   // ── Circle ──
 
   drawCircle(options: DrawShapeOptions = {}): Circle {
+    this.saveState();
     const size = SIZE_PRESETS[options.size ?? 'medium'];
     const radius = options.radius ?? size.circleRadius;
     const fill = resolveColor(options.color);
@@ -87,6 +92,7 @@ export class CanvasEngine {
   // ── Rectangle ──
 
   drawRect(options: DrawShapeOptions = {}): Rect {
+    this.saveState();
     const size = SIZE_PRESETS[options.size ?? 'medium'];
     const w = options.width ?? size.rectSide;
     const h = options.height ?? size.rectSide;
@@ -113,6 +119,7 @@ export class CanvasEngine {
   // ── Triangle ──
 
   drawTriangle(options: DrawShapeOptions = {}): Triangle {
+    this.saveState();
     const size = SIZE_PRESETS[options.size ?? 'medium'];
     const side = options.width ?? size.triangleSide;
     const fill = resolveColor(options.color);
@@ -138,6 +145,7 @@ export class CanvasEngine {
   // ── Line ──
 
   drawLine(options: DrawShapeOptions = {}): Line {
+    this.saveState();
     const stroke = resolveColor(options.color);
     const strokeWidth = options.strokeWidth ?? 3;
 
@@ -182,6 +190,7 @@ export class CanvasEngine {
   }
 
   clear(): void {
+    this.saveState();
     this.canvas.clear();
     this.canvas.backgroundColor = '#1a1a2e';
     this.canvas.renderAll();
@@ -189,6 +198,33 @@ export class CanvasEngine {
 
   getJSON(): string {
     return JSON.stringify(this.canvas.toJSON());
+  }
+
+  /** 保存当前画布快照到历史栈 */
+  private saveState(): void {
+    // 清除重做栈（新操作后不可重做）
+    this.history = this.history.slice(0, this.historyIndex + 1);
+    this.history.push(this.getJSON());
+    if (this.history.length > this.MAX_HISTORY) {
+      this.history.shift();
+    }
+    this.historyIndex = this.history.length - 1;
+  }
+
+  /** 撤销：回到上一个历史状态 */
+  undo(): boolean {
+    if (this.historyIndex <= 0) return false;
+    this.historyIndex--;
+    this.loadJSON(this.history[this.historyIndex]);
+    return true;
+  }
+
+  /** 重做：前进到下一个历史状态 */
+  redo(): boolean {
+    if (this.historyIndex >= this.history.length - 1) return false;
+    this.historyIndex++;
+    this.loadJSON(this.history[this.historyIndex]);
+    return true;
   }
 
   loadJSON(json: string): Promise<void> {
