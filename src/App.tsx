@@ -49,7 +49,7 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): void {
       break;
     case 'edit': {
       const editParams = cmd.params ?? {};
-      const target = typeof editParams.target === 'string' ? editParams.target : 'selected';
+      const target = typeof editParams.target === 'string' ? editParams.target : 'last';
       engine.editObjects(target, editParams);
       break;
     }
