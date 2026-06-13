@@ -9,6 +9,7 @@ export interface DrawShapeOptions {
   color?: string;
   size?: ShapeSize;
   position?: ShapePosition;
+  name?: string;
   radius?: number;
   width?: number;
   height?: number;

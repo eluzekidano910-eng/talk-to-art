@@ -26,6 +26,7 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): void {
       if (typeof params.color === 'string') options.color = params.color;
       if (typeof params.size === 'string') options.size = params.size as ShapeSize;
       if (typeof params.position === 'string') options.position = params.position as ShapePosition;
+      if (typeof params.semanticName === 'string') options.name = params.semanticName;
 
       switch (shape) {
         case 'circle':
@@ -46,6 +47,12 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): void {
     case 'undo':
       engine.undo();
       break;
+    case 'edit': {
+      const editParams = cmd.params ?? {};
+      const target = typeof editParams.target === 'string' ? editParams.target : 'selected';
+      engine.editObjects(target, editParams);
+      break;
+    }
     case 'redo':
       engine.redo();
       break;

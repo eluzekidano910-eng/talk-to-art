@@ -78,6 +78,7 @@ export class CanvasEngine {
       top,
       radius,
       fill,
+      name: options.name,
       stroke: options.stroke,
       strokeWidth: options.strokeWidth ?? 0,
       originX: 'center',
@@ -105,6 +106,7 @@ export class CanvasEngine {
       width: w,
       height: h,
       fill,
+      name: options.name,
       stroke: options.stroke,
       strokeWidth: options.strokeWidth ?? 0,
       originX: 'center',
@@ -131,6 +133,7 @@ export class CanvasEngine {
       width: side,
       height: side,
       fill,
+      name: options.name,
       stroke: options.stroke,
       strokeWidth: options.strokeWidth ?? 0,
       originX: 'center',
@@ -162,6 +165,7 @@ export class CanvasEngine {
     const line = new Line([cw * 0.1, y, cw * 0.9, y], {
       stroke,
       strokeWidth,
+      name: options.name,
     });
 
     this.canvas.add(line);
@@ -194,6 +198,51 @@ export class CanvasEngine {
     this.canvas.clear();
     this.canvas.backgroundColor = '#1a1a2e';
     this.canvas.renderAll();
+  }
+
+  /** 按目标查找画布对象 */
+  findObjects(target: string): any[] {
+    const all = this.canvas.getObjects();
+    if (target === 'last') return all.length > 0 ? [all[all.length - 1]] : [];
+    if (target === 'selected') {
+      const active = this.canvas.getActiveObject();
+      return active ? [active] : [];
+    }
+    const byName = all.filter((o: any) => o.name === target);
+    return byName.length > 0 ? byName : [];
+  }
+
+  /** 编辑对象：移动/缩放/改色 */
+  editObjects(target: string, changes: Record<string, unknown>): boolean {
+    const objects = this.findObjects(target);
+    if (objects.length === 0) return false;
+
+    this.saveState();
+
+    for (const obj of objects) {
+      if (typeof changes.color === 'string') {
+        obj.set('fill', resolveColor(changes.color));
+      }
+      if (changes.size === 'large') {
+        obj.set('scaleX', 1.5);
+        obj.set('scaleY', 1.5);
+      } else if (changes.size === 'small') {
+        obj.set('scaleX', 0.6);
+        obj.set('scaleY', 0.6);
+      }
+      if (typeof changes.moveDirection === 'string') {
+        const step = 50;
+        switch (changes.moveDirection) {
+          case '左': obj.set('left', (obj.left ?? 0) - step); break;
+          case '右': obj.set('left', (obj.left ?? 0) + step); break;
+          case '上': obj.set('top', (obj.top ?? 0) - step); break;
+          case '下': obj.set('top', (obj.top ?? 0) + step); break;
+        }
+      }
+      obj.setCoords();
+    }
+    this.canvas.renderAll();
+    return true;
   }
 
   getJSON(): string {
