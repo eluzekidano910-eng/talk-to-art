@@ -49,10 +49,7 @@ function recognizeIntent(text: string): CommandIntent | null {
   // 编辑
   if (/(改成?|变(成|大|小|色|颜色|红|蓝|绿|黄)|放大|缩小|移动|向(左|右|上|下)|变大|变小|换色|旋转|选中)/.test(text)) return 'edit';
   // 绘图（默认最多）
-  if (/画|绘|添加|加一?[个条座棵只]|create|draw/.test(text)) return 'draw';
-
-  // 没有任何明确意图 → 尝试按 draw 处理
-  if (/(圆|圈|方形|三角|线|太阳|山|河|树|花)/.test(text)) return 'draw';
+  if (/画|绘|添加|加一?[个条座棵只]|生成|新建|create|draw/.test(text)) return 'draw';
 
   return null;
 }
@@ -111,6 +108,8 @@ function extractDrawParams(text: string): Record<string, unknown> {
  */
 function extractEditParams(text: string): Record<string, unknown> {
   const params: Record<string, unknown> = {};
+
+  if (/所有|全部/.test(text)) params.selectAll = true;
 
   if (/变(大|长|宽|高)/.test(text) || /放大/.test(text)) params.size = 'large';
   else if (/变(小|短|窄)/.test(text) || /缩小/.test(text)) params.size = 'small';
