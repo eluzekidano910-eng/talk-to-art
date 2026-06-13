@@ -47,7 +47,7 @@ function recognizeIntent(text: string): CommandIntent | null {
   // 删除
   if (/删除|删掉|移除|去掉|delete|remove|擦/.test(text)) return 'delete';
   // 编辑
-  if (/(改成?|变(成|大|小|色|颜色|红|蓝|绿|黄)|放大|缩小|移动|向(左|右|上|下)|变大|变小|换色|旋转)/.test(text)) return 'edit';
+  if (/(改成?|变(成|大|小|色|颜色|红|蓝|绿|黄)|放大|缩小|移动|向(左|右|上|下)|变大|变小|换色|旋转|选中)/.test(text)) return 'edit';
   // 绘图（默认最多）
   if (/画|绘|添加|加一?[个条座棵只]|create|draw/.test(text)) return 'draw';
 
@@ -123,12 +123,22 @@ function extractEditParams(text: string): Record<string, unknown> {
     if (dirMatch) params.moveDirection = dirMatch[1];
   }
 
-  // 目标对象
-  if (/它|这个|那个|当前|选中/.test(text)) params.target = 'selected';
-  else if (/太阳|山|河|树|花/.test(text)) {
+  // 位置（用于辅助定位）
+  const position = resolvePositionToken(text);
+  if (position) params.position = position;
+
+  // 目标对象 — 按优先级：形状类型 > 语义名称 > 最近/最后 > 选中/指针
+  if (/圆|圈|方形|矩形|正方|三角|线/.test(text)) {
+    const shape = resolveShape(text);
+    if (shape) params.target = shape;
+  } else if (/太阳|山|河|树|花/.test(text)) {
     const semantic = resolveSemanticName(text);
     if (semantic) params.target = semantic;
-  } else if (/上?一个|最近|最后/.test(text)) params.target = 'last';
+  } else if (/上?一个|最近|最后/.test(text)) {
+    params.target = 'last';
+  } else if (/它|这个|那个|当前|选中/.test(text)) {
+    params.target = 'selected';
+  }
 
   return params;
 }

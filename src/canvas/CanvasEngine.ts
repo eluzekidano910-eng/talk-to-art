@@ -208,14 +208,39 @@ export class CanvasEngine {
       const active = this.canvas.getActiveObject();
       return active ? [active] : [];
     }
+    // 按形状类型查找（circle / rect / triangle / line）
+    const SHAPE_TYPE_MAP: Record<string, string> = {
+      circle: 'circle', rect: 'rect', triangle: 'triangle', line: 'line',
+    };
+    if (SHAPE_TYPE_MAP[target]) {
+      return all.filter(o => (o as any).type === SHAPE_TYPE_MAP[target]);
+    }
     const byName = all.filter((o: any) => o.name === target);
     return byName.length > 0 ? byName : [];
   }
 
   /** 编辑对象：移动/缩放/改色 */
   editObjects(target: string, changes: Record<string, unknown>): boolean {
-    const objects = this.findObjects(target);
+    let objects = this.findObjects(target);
     if (objects.length === 0) return false;
+
+    // 位置过滤：命中多个时取距离最近者
+    if (typeof changes.position === 'string' && objects.length > 1) {
+      const pos = (POSITION_PRESETS as any)[changes.position];
+      if (pos) {
+        const cx = this.width * pos.leftFrac;
+        const cy = this.height * pos.topFrac;
+        let minDist = Infinity;
+        let closest: any = null;
+        for (const obj of objects) {
+          const dx = (obj.left ?? 0) - cx;
+          const dy = (obj.top ?? 0) - cy;
+          const d = dx * dx + dy * dy;
+          if (d < minDist) { minDist = d; closest = obj; }
+        }
+        if (closest) objects = [closest];
+      }
+    }
 
     this.saveState();
 
@@ -241,6 +266,13 @@ export class CanvasEngine {
       }
       obj.setCoords();
     }
+
+    // 自动选中被操作的对象（便于视觉反馈）
+    if (objects.length > 0) {
+      this.canvas.discardActiveObject();
+      this.canvas.setActiveObject(objects[0]);
+    }
+
     this.canvas.renderAll();
     return true;
   }
