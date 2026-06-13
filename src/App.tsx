@@ -10,6 +10,8 @@ import { CanvasEngine } from './canvas';
 import { CommandParser } from './command';
 import type { Command } from './command';
 import type { DrawShapeOptions, ShapeSize, ShapePosition } from './canvas';
+import { CommandLog } from './components/CommandLog';
+import type { LogEntry } from './components/CommandLog';
 
 /**
  * 执行解析后的语音命令，在画布上绘制或操作
@@ -56,6 +58,8 @@ function App() {
 
   const [supported, setSupported] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
+  const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
+  const logIdRef = useRef(0);
 
   // 语音最终结果 → 解析 → 执行画布命令
   useEffect(() => {
@@ -70,6 +74,18 @@ function App() {
     for (const cmd of commands) {
       executeCanvasCommand(engine, cmd);
     }
+
+    // 添加到命令日志
+    setLogEntries(prev => {
+      const entry: LogEntry = {
+        id: ++logIdRef.current,
+        rawText: voiceText,
+        commands: commands.map(c => ({ intent: c.intent, params: c.params ?? {} })),
+        status: commands.length > 0 ? 'success' : 'error',
+        error: commands.length === 0 ? '未识别为有效指令' : undefined,
+      };
+      return [...prev, entry].slice(-50);
+    });
   }, [isFinal, voiceText]);
 
   // 获取或创建识别器实例
@@ -131,6 +147,8 @@ function App() {
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-[#0f0f0f]">
       <DrawingCanvas ref={canvasRef} className="absolute inset-0" />
+
+      <CommandLog entries={logEntries} />
 
       {initError && (
         <div className="absolute top-6 right-6 z-50 max-w-sm rounded-xl border border-red-400/30 bg-red-500/15 px-4 py-3 text-sm text-red-200 shadow-2xl">
