@@ -12,11 +12,13 @@ import type { Command } from './command';
 import type { DrawShapeOptions, ShapeSize, ShapePosition } from './canvas';
 import { CommandLog } from './components/CommandLog';
 import type { LogEntry } from './components/CommandLog';
+import { SoundPlayer } from './voice';
 
 /**
  * 执行解析后的语音命令，在画布上绘制或操作
  */
 function executeCanvasCommand(engine: CanvasEngine, cmd: Command): void {
+function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
   const params = cmd.params ?? {};
 
   switch (cmd.intent) {
@@ -29,45 +31,38 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): void {
       if (typeof params.semanticName === 'string') options.name = params.semanticName;
 
       switch (shape) {
-        case 'circle':
-          engine.drawCircle(options);
-          break;
-        case 'rect':
-          engine.drawRect(options);
-          break;
-        case 'triangle':
-          engine.drawTriangle(options);
-          break;
-        case 'line':
-          engine.drawLine(options);
-          break;
+        case 'circle': engine.drawCircle(options); break;
+        case 'rect': engine.drawRect(options); break;
+        case 'triangle': engine.drawTriangle(options); break;
+        case 'line': engine.drawLine(options); break;
+        default: return false;
       }
-      break;
+      return true;
     }
     case 'undo':
-      engine.undo();
-      break;
+      return engine.undo();
     case 'edit': {
       const editParams = cmd.params ?? {};
-      const target = typeof editParams.target === 'string' ? editParams.target : 'last';
-      engine.editObjects(target, editParams);
-      break;
+      let target = typeof editParams.target === 'string' ? editParams.target : null;
+      if (!target) {
+        const active = engine.canvas.getActiveObject();
+        target = active ? 'selected' : 'last';
+      }
+      return engine.editObjects(target, editParams);
     }
     case 'delete': {
       const delParams = cmd.params ?? {};
       const target = typeof delParams.target === 'string' ? delParams.target : 'selected';
-      engine.deleteObjects(target);
-      break;
+      return engine.deleteObjects(target);
     }
     case 'redo':
-      engine.redo();
-      break;
+      return engine.redo();
     case 'clear':
       engine.clear();
-      break;
+      return true;
     case 'export':
       engine.exportPNG();
-      break;
+      return true;
     }
   }
 
@@ -77,13 +72,21 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): void {
   const [isFinal, setIsFinal] = useState(false);
   const recognizerRef = useRef<VoiceRecognizer | null>(null);
   const canvasRef = useRef<DrawingCanvasHandle>(null);
+  const soundPlayerRef = useRef<SoundPlayer | null>(null);
 
   const [supported, setSupported] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
+
+  // 初始化音效播放器
+  useEffect(() => {
+    soundPlayerRef.current = new SoundPlayer();
+    return () => soundPlayerRef.current?.destroy();
+  }, []);
+
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const logIdRef = useRef(0);
 
-  // 语音最终结果 → 解析 → 执行画布命令
+  // 语音最终结果 → 解析 → 执行 → 音效 + 日志
   useEffect(() => {
     if (!isFinal || !voiceText) return;
 
@@ -93,21 +96,37 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): void {
     const parser = new CommandParser();
     const commands = parser.parse(voiceText);
 
-    for (const cmd of commands) {
-      executeCanvasCommand(engine, cmd);
+    // 空命令 → 音效 + 错误日志
+    if (commands.length === 0) {
+      soundPlayerRef.current?.play('empty');
+      setLogEntries(prev => [...prev, {
+        id: ++logIdRef.current, rawText: voiceText, commands: [],
+        status: 'error', error: '未识别为有效指令',
+      }].slice(-50));
+      return;
     }
 
+    // 执行命令，跟踪是否全部成功
+    let allOk = true;
+    for (const cmd of commands) {
+      if (!executeCanvasCommand(engine, cmd)) allOk = false;
+    }
+
+    // 音效反馈（commit 2/3）
+    soundPlayerRef.current?.play(allOk ? 'success' : 'error');
+
     // 添加到命令日志
-    setLogEntries(prev => {
-      const entry: LogEntry = {
-        id: ++logIdRef.current,
-        rawText: voiceText,
-        commands: commands.map(c => ({ intent: c.intent, params: c.params ?? {} })),
-        status: commands.length > 0 ? 'success' : 'error',
-        error: commands.length === 0 ? '未识别为有效指令' : undefined,
-      };
-      return [...prev, entry].slice(-50);
-    });
+    setLogEntries(prev => [...prev, {
+      id: ++logIdRef.current, rawText: voiceText,
+      commands: commands.map(c => ({ intent: c.intent, params: c.params ?? {} })),
+      status: allOk ? 'success' : 'error',
+      error: allOk ? undefined : '部分命令执行失败',
+    }].slice(-50));
+
+    // 如果识别器仍在监听，恢复为 listening 状态
+    if (recognizerRef.current?.isListening()) {
+      setVoiceState('listening');
+    }
   }, [isFinal, voiceText]);
 
   // 获取或创建识别器实例
