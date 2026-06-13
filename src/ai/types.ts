@@ -2,6 +2,26 @@
  * AI 模块类型定义
  */
 
+/** 命令意图 */
+export type CommandIntent =
+  | 'draw'
+  | 'edit'
+  | 'delete'
+  | 'undo'
+  | 'redo'
+  | 'clear'
+  | 'export'
+  | 'help'
+  | 'sleep'
+  | 'wake';
+
+/** 解析后的命令 */
+export interface Command {
+  intent: CommandIntent;
+  raw: string;
+  params?: Record<string, unknown>;
+}
+
 /** 聊天消息（DeepSeek API 的消息格式） */
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
