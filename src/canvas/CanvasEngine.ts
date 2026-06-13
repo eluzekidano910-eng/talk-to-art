@@ -245,6 +245,24 @@ export class CanvasEngine {
     return true;
   }
 
+  /** 删除对象（按目标查找并移除） */
+  deleteObjects(target: string): boolean {
+    let objects: any[];
+    if (target === 'all') {
+      objects = this.canvas.getObjects();
+    } else {
+      objects = this.findObjects(target);
+    }
+    if (objects.length === 0) return false;
+
+    this.saveState();
+    for (const obj of objects) {
+      this.canvas.remove(obj);
+    }
+    this.canvas.renderAll();
+    return true;
+  }
+
   getJSON(): string {
     return JSON.stringify(this.canvas.toJSON());
   }

@@ -53,6 +53,12 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): void {
       engine.editObjects(target, editParams);
       break;
     }
+    case 'delete': {
+      const delParams = cmd.params ?? {};
+      const target = typeof delParams.target === 'string' ? delParams.target : 'selected';
+      engine.deleteObjects(target);
+      break;
+    }
     case 'redo':
       engine.redo();
       break;
