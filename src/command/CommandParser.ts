@@ -1,4 +1,5 @@
 ﻿import type { Command, CommandIntent, ShapeType, ParseResult, NormalizedToken } from './types';
+import { lookupColor } from './dictionary/colors';
 
 /**
  * 将拆分后的单句解析为一个 Command
@@ -183,12 +184,8 @@ function extractCount(text: string): number {
 }
 
 function resolveColorToken(text: string): string | null {
-  // commit 2 前只做基础检测，不做映射
-  const colors = ['红', '蓝', '绿', '黄', '紫', '粉', '橙', '白', '黑', '灰', '青', '棕', '褐'];
-  for (const c of colors) {
-    if (text.includes(c)) return c;
-  }
-  return null;
+  const result = lookupColor(text);
+  return result ? result.name : null;
 }
 
 function resolveSizeToken(text: string): string | null {
