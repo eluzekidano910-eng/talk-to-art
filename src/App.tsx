@@ -250,9 +250,13 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
   }, [getRecognizer, voiceState]);
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center bg-[#0f0f0f]">
-      <DrawingCanvas ref={canvasRef} className="absolute inset-0" />
+    <div className="relative w-full h-full flex items-center justify-center">
+      <div className="canvas-wrapper">
+        <DrawingCanvas ref={canvasRef} className="absolute inset-0" />
+      </div>
 
+      <div className="brand-watermark">小A · 语音绘图</div>
+ 
       <CommandLog entries={logEntries} />
 
       {initError && (

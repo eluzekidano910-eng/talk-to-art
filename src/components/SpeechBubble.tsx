@@ -80,7 +80,6 @@ export function SpeechBubble({ text, isFinal, state }: SpeechBubbleProps) {
         }
       `}>
         {/* 脉冲指示点（听音中） */}
-        {state === 'listening' && !text && (
         {state === 'standby' && !text && (
           <div className="flex items-center gap-3">
             <span className="relative flex h-3 w-3">

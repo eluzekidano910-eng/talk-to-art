@@ -21,3 +21,23 @@ html, body, #root {
   background: #0f0f0f;
   color: #e0e0e0;
 }
+.canvas-wrapper {
+  position: absolute;
+  inset: 16px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(239, 68, 68, 0.08);
+}
+
+.brand-watermark {
+  position: absolute;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.08);
+  letter-spacing: 4px;
+  font-weight: 300;
+  pointer-events: none;
+  user-select: none;
+}

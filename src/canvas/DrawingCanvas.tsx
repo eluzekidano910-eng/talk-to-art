@@ -15,7 +15,7 @@ export const DrawingCanvas = forwardRef<DrawingCanvasHandle, DrawingCanvasProps>
     const engineRef = useRef<CanvasEngine | null>(null);
 
     useImperativeHandle(ref, () => ({
-      engine: engineRef.current,
+      get engine() { return engineRef.current; }
     }));
 
     useEffect(() => {
