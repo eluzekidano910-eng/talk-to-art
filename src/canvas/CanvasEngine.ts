@@ -1,4 +1,4 @@
-import { Canvas, Circle, Rect, Triangle, Line } from 'fabric';
+import { Canvas, Circle, Rect, Triangle, Line, ActiveSelection } from 'fabric';
 import type { ShapeSize, ShapePosition, DrawShapeOptions } from './types';
 
 const SIZE_PRESETS: Record<ShapeSize, { circleRadius: number; rectSide: number; triangleSide: number }> = {
@@ -86,6 +86,8 @@ export class CanvasEngine {
     });
 
     this.canvas.add(circle);
+    this.canvas.discardActiveObject();
+    this.canvas.setActiveObject(circle);
     this.canvas.renderAll();
     return circle;
   }
@@ -114,6 +116,8 @@ export class CanvasEngine {
     });
 
     this.canvas.add(rect);
+    this.canvas.discardActiveObject();
+    this.canvas.setActiveObject(rect);
     this.canvas.renderAll();
     return rect;
   }
@@ -141,6 +145,8 @@ export class CanvasEngine {
     });
 
     this.canvas.add(triangle);
+    this.canvas.discardActiveObject();
+    this.canvas.setActiveObject(triangle);
     this.canvas.renderAll();
     return triangle;
   }
@@ -169,6 +175,8 @@ export class CanvasEngine {
     });
 
     this.canvas.add(line);
+    this.canvas.discardActiveObject();
+    this.canvas.setActiveObject(line);
     this.canvas.renderAll();
     return line;
   }
@@ -204,6 +212,7 @@ export class CanvasEngine {
   findObjects(target: string): any[] {
     const all = this.canvas.getObjects();
     if (target === 'last') return all.length > 0 ? [all[all.length - 1]] : [];
+    if (target === 'all') return [...all];
     if (target === 'selected') {
       const active = this.canvas.getActiveObject();
       return active ? [active] : [];
@@ -242,7 +251,12 @@ export class CanvasEngine {
       }
     }
 
-    this.saveState();
+    // 仅在有实际修改时保存快照，纯选中不产生历史记录
+    const hasChanges = typeof changes.color === 'string' ||
+      changes.size === 'large' || changes.size === 'small' ||
+      typeof changes.moveDirection === 'string';
+
+    if (hasChanges) this.saveState();
 
     for (const obj of objects) {
       if (typeof changes.color === 'string') {
@@ -270,7 +284,12 @@ export class CanvasEngine {
     // 自动选中被操作的对象（便于视觉反馈）
     if (objects.length > 0) {
       this.canvas.discardActiveObject();
-      this.canvas.setActiveObject(objects[0]);
+      if (changes.selectAll && objects.length > 1) {
+        const sel = new ActiveSelection(objects, { canvas: this.canvas });
+        this.canvas.setActiveObject(sel);
+      } else {
+        this.canvas.setActiveObject(objects[0]);
+      }
     }
 
     this.canvas.renderAll();
