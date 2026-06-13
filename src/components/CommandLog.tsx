@@ -37,11 +37,19 @@ function formatParams(params: Record<string, unknown>): string {
         'bottom-left': '左下', 'bottom-center': '下方', 'bottom-right': '右下',
       };
       parts.push(posLabels[val] ?? val);
-    } else if (key === 'count' && typeof val === 'number') {
-      if (val > 1) parts.push(`${val}个`);
+      } else if (key === 'count' && typeof val === 'number') {
+        if (val > 1) parts.push(`${val}个`);
+      } else if (key === 'moveDirection' && typeof val === 'string') {
+        parts.push(`向${val}`);
+      } else if (key === 'target' && typeof val === 'string') {
+        const targetLabels: Record<string, string> = {
+          selected: '选中', last: '最后一个',
+          sun: '太阳', mountain: '山', river: '河', tree: '树', flower: '花',
+        };
+        parts.push(targetLabels[val] ?? val);
+      }
     }
-  }
-  return parts.join('、') || '—';
+    return parts.join('、') || '—';
 }
 
 function formatCommand(cmd: { intent: CommandIntent; params: Record<string, unknown> }): string {

@@ -112,8 +112,8 @@ function extractDrawParams(text: string): Record<string, unknown> {
 function extractEditParams(text: string): Record<string, unknown> {
   const params: Record<string, unknown> = {};
 
-  if (/变(大|长|宽|高)/.test(text)) params.size = 'large';
-  else if (/变(小|短|窄)/.test(text)) params.size = 'small';
+  if (/变(大|长|宽|高)/.test(text) || /放大/.test(text)) params.size = 'large';
+  else if (/变(小|短|窄)/.test(text) || /缩小/.test(text)) params.size = 'small';
 
   const color = resolveColorToken(text);
   if (color) params.color = color;
