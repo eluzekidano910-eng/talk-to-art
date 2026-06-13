@@ -65,8 +65,11 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): void {
     case 'clear':
       engine.clear();
       break;
-   }
- }
+    case 'export':
+      engine.exportPNG();
+      break;
+    }
+  }
 
  function App() {
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');

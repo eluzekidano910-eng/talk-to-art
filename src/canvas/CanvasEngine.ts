@@ -263,6 +263,17 @@ export class CanvasEngine {
     return true;
   }
 
+  /** 导出画布为 PNG 并触发下载 */
+  exportPNG(): void {
+    const dataURL = this.canvas.toDataURL({ format: 'png', multiplier: 2 });
+    const link = document.createElement('a');
+    link.download = `voicedraw-${Date.now()}.png`;
+    link.href = dataURL;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   getJSON(): string {
     return JSON.stringify(this.canvas.toJSON());
   }
