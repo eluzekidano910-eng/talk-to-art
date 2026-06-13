@@ -15,6 +15,7 @@ const INTENT_LABEL: Record<string, string> = {
   draw: '绘图', edit: '修改', delete: '删除',
   undo: '撤销', redo: '重做', clear: '清空',
   export: '导出', help: '帮助',
+  sleep: '休眠', wake: '唤醒',
 };
 
 const SHAPE_LABEL: Record<string, string> = {

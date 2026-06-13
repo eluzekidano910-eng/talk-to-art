@@ -84,11 +84,26 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
 
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const logIdRef = useRef(0);
+  const isAwakeRef = useRef(false);
   const autoStartedRef = useRef(false);
 
   // 语音最终结果 → 解析 → 执行 → 音效 + 日志
   useEffect(() => {
     if (!isFinal || !voiceText) return;
+
+    // 唤醒词检测：说"小A小A"或"打开程序"激活
+    if ((/小A[,，、]?小A/.test(voiceText) || /打开程序/.test(voiceText)) && !isAwakeRef.current) {
+      isAwakeRef.current = true;
+      soundPlayerRef.current?.play('ready');
+      setLogEntries(prev => [...prev, {
+        id: ++logIdRef.current, rawText: voiceText, commands: [],
+        status: 'success',
+      }].slice(-50));
+      setVoiceState('listening');
+      return;
+    }
+    // 未唤醒 → 忽略所有语音
+    if (!isAwakeRef.current) return;
 
     const engine = canvasRef.current?.engine;
     if (!engine) return;
@@ -109,8 +124,19 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
     // 语音控制：休眠/唤醒（直接操作识别器，不经过画布）
     if (commands.some(c => c.intent === 'sleep' || c.intent === 'wake')) {
       const isSleep = commands.some(c => c.intent === 'sleep');
-      if (isSleep) recognizerRef.current?.stop();
-      else recognizerRef.current?.start();
+      if (isSleep) {
+        isAwakeRef.current = false;
+        if (/停止|关闭/.test(voiceText)) {
+          recognizerRef.current?.stop();
+          setVoiceState('idle');
+        } else {
+          setVoiceState('standby');
+        }
+      } else {
+        isAwakeRef.current = true;
+        recognizerRef.current?.start();
+        setVoiceState('listening');
+      }
       soundPlayerRef.current?.play('ready');
       setLogEntries(prev => [...prev, {
         id: ++logIdRef.current, rawText: voiceText,
@@ -159,7 +185,12 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
               }
             },
             onStateChange: (state: VoiceState) => {
-              setVoiceState(state);
+              // 未唤醒时启动默认进入待命
+              if (state === 'listening' && !isAwakeRef.current) {
+                setVoiceState('standby');
+              } else {
+                setVoiceState(state);
+              }
             },
             onError: (error: string) => {
               setVoiceState('error');

@@ -6,7 +6,9 @@ export type CommandIntent =
   | 'redo'
   | 'clear'
   | 'export'
-  | 'help';
+  | 'help'
+  | 'sleep'
+  | 'wake';
 
 export type ShapeType = 'circle' | 'rect' | 'triangle' | 'line';
 

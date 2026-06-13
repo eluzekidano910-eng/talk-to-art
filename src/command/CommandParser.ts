@@ -36,6 +36,10 @@ function splitSentences(text: string): string[] {
 function recognizeIntent(text: string): CommandIntent | null {
   // 帮助
   if (/帮助|怎么用|支持|指令|help|功能|说明|教程/.test(text)) return 'help';
+  // 休眠
+  if (/停止|关闭|休眠|结束|暂停|睡眠/.test(text)) return 'sleep';
+  // 唤醒
+  if (/开始|启动|恢复|唤醒|继续|开始听/.test(text)) return 'wake';
   // 撤销
   if (/撤销|回退|上一步|后退|undo/.test(text)) return 'undo';
   // 重做
@@ -47,7 +51,7 @@ function recognizeIntent(text: string): CommandIntent | null {
   // 删除
   if (/删除|删掉|移除|去掉|delete|remove|擦/.test(text)) return 'delete';
   // 编辑
-  if (/(改成?|变(成|大|小|色|颜色|红|蓝|绿|黄)|放大|缩小|移动|向(左|右|上|下)|变大|变小|换色|旋转|选中)/.test(text)) return 'edit';
+  if (/(改成?|变(成|大|小|色|颜色|红|蓝|绿|黄)|放大|缩小|移动|向(左|右|上|下)|变大|变小|换色|旋转|选中|全选)/.test(text)) return 'edit';
   // 绘图（默认最多）
   if (/画|绘|添加|加一?[个条座棵只]|生成|新建|create|draw/.test(text)) return 'draw';
 
@@ -109,7 +113,10 @@ function extractDrawParams(text: string): Record<string, unknown> {
 function extractEditParams(text: string): Record<string, unknown> {
   const params: Record<string, unknown> = {};
 
-  if (/所有|全部/.test(text)) params.selectAll = true;
+  if (/所有|全部|全选/.test(text)) {
+    params.selectAll = true;
+    if (/全选/.test(text)) params.target = 'all';
+  }
 
   if (/变(大|长|宽|高)/.test(text) || /放大/.test(text)) params.size = 'large';
   else if (/变(小|短|窄)/.test(text) || /缩小/.test(text)) params.size = 'small';
@@ -135,7 +142,7 @@ function extractEditParams(text: string): Record<string, unknown> {
     if (semantic) params.target = semantic;
   } else if (/上?一个|最近|最后/.test(text)) {
     params.target = 'last';
-  } else if (/它|这个|那个|当前|选中/.test(text)) {
+  } else if (/它|这个|那个|当前|选中|它们|他们/.test(text)) {
     params.target = 'selected';
   }
 
@@ -147,7 +154,7 @@ function extractEditParams(text: string): Record<string, unknown> {
  */
 function extractDeleteParams(text: string): Record<string, unknown> {
   const params: Record<string, unknown> = {};
-  if (/它|这个|那个|当前|选中/.test(text)) params.target = 'selected';
+  if (/它|这个|那个|当前|选中|它们|他们/.test(text)) params.target = 'selected';
   else if (/所有|全部|everything/.test(text)) params.target = 'all';
   else {
     const semantic = resolveSemanticName(text);
@@ -293,7 +300,7 @@ export class CommandParser {
    * 获取当前支持的所有分类
    */
   getSupportedIntents(): CommandIntent[] {
-    return ['draw', 'edit', 'delete', 'undo', 'redo', 'clear', 'export', 'help'];
+    return ['draw', 'edit', 'delete', 'undo', 'redo', 'clear', 'export', 'help', 'sleep', 'wake'];
   }
 }
 
