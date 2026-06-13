@@ -52,12 +52,13 @@ function formatParams(params: Record<string, unknown>): string {
     return parts.join('、') || '—';
 }
 
-function formatCommand(cmd: { intent: CommandIntent; params: Record<string, unknown> }): string {
-  const label = INTENT_LABEL[cmd.intent] ?? cmd.intent;
-  if (cmd.intent === 'clear') return `${label}画布`;
-  const paramsStr = formatParams(cmd.params);
-  return paramsStr ? `${label} → ${paramsStr}` : label;
-}
+  function formatCommand(cmd: { intent: CommandIntent; params: Record<string, unknown> }): string {
+    const label = INTENT_LABEL[cmd.intent] ?? cmd.intent;
+    if (cmd.intent === 'clear') return `${label}画布`;
+    if (cmd.intent === 'export') return `${label}图片`;
+    const paramsStr = formatParams(cmd.params);
+    return paramsStr ? `${label} → ${paramsStr}` : label;
+  }
 
 // ── 组件 ──
 
@@ -103,7 +104,7 @@ export function CommandLog({ entries, maxHeight = 240 }: CommandLogProps) {
             className="overflow-y-auto"
             style={{ maxHeight }}
           >
-            {[...entries].reverse().map((entry) => (
+            {entries.map((entry) => (
               <div
                 key={entry.id}
                 className="px-3 py-2 border-b border-white/5 last:border-b-0 hover:bg-white/[0.03] transition-colors"
