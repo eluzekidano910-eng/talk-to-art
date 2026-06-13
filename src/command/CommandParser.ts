@@ -1,5 +1,6 @@
 ﻿import type { Command, CommandIntent, ShapeType, ParseResult, NormalizedToken } from './types';
 import { lookupColor } from './dictionary/colors';
+import { lookupSize } from './dictionary/sizes';
 
 /**
  * 将拆分后的单句解析为一个 Command
@@ -189,6 +190,9 @@ function resolveColorToken(text: string): string | null {
 }
 
 function resolveSizeToken(text: string): string | null {
+  const fromDict = lookupSize(text);
+  if (fromDict) return fromDict;
+  // 原 regex 兜底（处理词典未覆盖的边缘情况）
   if (/很大?|巨大|超大|大大/.test(text)) return 'large';
   if (/(很小?|迷你|tiny|细小)/.test(text)) return 'small';
   if (/中(等|号|间)/.test(text)) return 'medium';
