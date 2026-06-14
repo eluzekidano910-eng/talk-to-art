@@ -13,6 +13,7 @@ import type { DrawShapeOptions, ShapeSize, ShapePosition } from './canvas';
 import { CommandLog } from './components/CommandLog';
 import type { LogEntry } from './components/CommandLog';
 import { SoundPlayer } from './voice';
+import { TtsPlayer } from './voice';
 import { AiService, AiInterpreter } from './ai';
 import { StatusBar } from './components';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -26,7 +27,7 @@ function delay(ms: number): Promise<void> {
 /**
  * 执行解析后的语音命令，在画布上绘制或操作
  */
-async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPlayer?: SoundPlayer): Promise<boolean> {
+async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPlayer?: SoundPlayer, ttsPlayer?: TtsPlayer): Promise<boolean> {
   const params = cmd.params ?? {};
 
   switch (cmd.intent) {
@@ -102,7 +103,7 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
       const subCommands = expandSceneTemplate(sceneKey);
       for (let i = 0; i < subCommands.length; i++) {
         if (i > 0) await delay(600);
-        await executeCanvasCommand(engine, subCommands[i], soundPlayer);
+        await executeCanvasCommand(engine, subCommands[i], soundPlayer, ttsPlayer);
       }
       return subCommands.length > 0;
     }
@@ -117,8 +118,9 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
   const [isFinal, setIsFinal] = useState(false);
   const recognizerRef = useRef<VoiceRecognizer | null>(null);
   const canvasRef = useRef<DrawingCanvasHandle>(null);
-  const soundPlayerRef = useRef<SoundPlayer | null>(null);
- const aiServiceRef = useRef<AiService | null>(null);
+const soundPlayerRef = useRef<SoundPlayer | null>(null);
+ const ttsPlayerRef = useRef<TtsPlayer | null>(null);
+const aiServiceRef = useRef<AiService | null>(null);
  const aiInterpreterRef = useRef<AiInterpreter | null>(null);
  const aiEnabledRef = useRef(false);
  const [settingsOpen, setSettingsOpen] = useState(false);
@@ -132,7 +134,12 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
   // 初始化音效播放器
   useEffect(() => {
     soundPlayerRef.current = new SoundPlayer();
-    return () => soundPlayerRef.current?.destroy();
+  return () => soundPlayerRef.current?.destroy();
+  }, []);
+
+  useEffect(() => {
+    ttsPlayerRef.current = new TtsPlayer();
+    return () => ttsPlayerRef.current?.cancel();
   }, []);
 
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
@@ -223,7 +230,7 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
       let allOk = true;
      for (const cmd of commands) {
         if (cmd.intent === 'freehand') continue;
-        if (!await executeCanvasCommand(engine, cmd, soundPlayerRef.current)) allOk = false;
+        if (!await executeCanvasCommand(engine, cmd, soundPlayerRef.current, ttsPlayerRef.current)) allOk = false;
       }
 
       // 追踪最后一步语义引用（用于 StatusBar 展示）
