@@ -1,4 +1,4 @@
-import type { VoiceRecognizerConfig, VoiceRecognizerCallbacks, VoiceResult, VoiceState } from './types';
+﻿import type { VoiceRecognizerConfig, VoiceRecognizerCallbacks, VoiceResult, VoiceState } from './types';
 
 /**
  * 浏览器语音识别服务层
@@ -41,6 +41,11 @@ export class VoiceRecognizer {
     this.recognition.maxAlternatives = this.config.maxAlternatives;
 
     this.bindEvents();
+  }
+
+  /** 是否已成功初始化 */
+  isReady(): boolean {
+    return this.recognition !== null;
   }
 
   /** 当前状态 */
@@ -104,16 +109,19 @@ export class VoiceRecognizer {
       this.callbacks.onStart?.();
     };
 
-    this.recognition.onend = () => {
-      // continuous=true 时 onend 仅在不说话超时后触发，
-      // 我们需要在非 continuous 模式下自动重启以保持持续对话
-      if (this._state === 'listening' && !this.config.continuous) {
-        // 非连续模式：说完一句自动重启，等待下一句
-        this.setState('idle');
-      } else {
-        this.setState('idle');
-      }
+   this.recognition.onend = () => {
+      const wasListening = this._state === 'listening';
+      this.setState('idle');
       this.callbacks.onEnd?.();
+      // continuous 模式下浏览器有时不会自动重启（Chrome 已知问题）
+      // 等待 800ms 后检查，若仍为 idle 则手动重启
+      if (wasListening && this.config.continuous) {
+        setTimeout(() => {
+          if (this._state !== 'listening') {
+            try { this.recognition?.start(); } catch { /* ignore */ }
+          }
+        }, 800);
+      }
     };
 
     this.recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -135,17 +143,11 @@ export class VoiceRecognizer {
       }
 
       // 优先发送最终结果，否则发送中间结果
-      if (finalText) {
+      const resultText = finalText || interimText;
+      if (resultText) {
         const voiceResult: VoiceResult = {
-          text: finalText.trim(),
-          isFinal: true,
-          confidence: maxConfidence,
-        };
-        this.callbacks.onResult?.(voiceResult);
-      } else if (interimText) {
-        const voiceResult: VoiceResult = {
-          text: interimText.trim(),
-          isFinal: false,
+          text: resultText.trim(),
+          isFinal: !!finalText,
           confidence: maxConfidence,
         };
         this.callbacks.onResult?.(voiceResult);

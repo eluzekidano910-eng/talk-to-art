@@ -1,4 +1,4 @@
-import { Canvas, Circle, Rect, Triangle, Line, ActiveSelection } from 'fabric';
+﻿import { Canvas, Circle, Rect, Triangle, Line, ActiveSelection } from 'fabric';
 import type { ShapeSize, ShapePosition, DrawShapeOptions } from './types';
 
 const SIZE_PRESETS: Record<ShapeSize, { circleRadius: number; rectSide: number; triangleSide: number }> = {
@@ -335,7 +335,8 @@ export class CanvasEngine {
     this.canvas.renderAll();
   }
 
- /** 导出画布为 PNG 并触发下载 */
+
+  /** 导出画布为 PNG 并触发下载 */
   exportPNG(): void {
     const dataURL = this.canvas.toDataURL({ format: 'png', multiplier: 2 });
     const link = document.createElement('a');
