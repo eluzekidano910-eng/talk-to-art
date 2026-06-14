@@ -330,6 +330,11 @@ export class CanvasEngine {
   selectObjects(target: string): boolean {
     const objects = this.findObjects(target);
     if (objects.length === 0) return false;
+    if (target === 'all') {
+      this.canvas.discardActiveObject();
+      this.canvas.renderAll();
+      return objects.length > 0;
+    }
     this.canvas.discardActiveObject();
     if (objects.length > 1) {
       const sel = new ActiveSelection(objects, { canvas: this.canvas });

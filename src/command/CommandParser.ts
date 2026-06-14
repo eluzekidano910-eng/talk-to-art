@@ -210,7 +210,7 @@ function fillDefaults(intent: CommandIntent, params: Record<string, unknown>): R
 function extractSelectParams(text: string): Record<string, unknown> {
   const params: Record<string, unknown> = {};
   if (/取消选择|取消选中|不选了/.test(text)) params.target = 'deselect';
-  else if (/所有|全部/.test(text)) params.target = 'all';
+  else if (/所有|全部|全选/.test(text)) params.target = 'all';
   else if (/圆|圈|方形|矩形|正方|三角|线/.test(text)) {
     const shape = resolveShape(text);
     if (shape) params.target = shape;
