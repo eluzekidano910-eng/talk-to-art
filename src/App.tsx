@@ -56,7 +56,7 @@ function buildDrawFeedback(params: Record<string, unknown>): string {
 /**
  * 执行解析后的语音命令，在画布上绘制或操作
  */
-async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPlayer?: SoundPlayer, ttsPlayer?: TtsPlayer): Promise<boolean> {
+async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPlayer?: SoundPlayer, ttsPlayer?: TtsPlayer, lastSemantic?: string | null): Promise<boolean> {
   const params = cmd.params ?? {};
 
   switch (cmd.intent) {
@@ -142,7 +142,37 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
      engine.exportPNG();
       return true;
     case 'help':
-      return true;
+      {
+        const objects = engine.canvas.getObjects() as any[];
+        if (objects.length === 0) {
+          ttsPlayer?.speak('画布当前为空。你可以说"画一个太阳"来开始。');
+          return true;
+        }
+        // 统计形状分类
+        const typeShapeName: Record<string, string> = {
+          circle: '圆形', rect: '矩形', triangle: '三角形', line: '线条',
+        };
+        const unitWords: Record<string, string> = {
+          circle: '个', rect: '个', triangle: '个', line: '条',
+        };
+        const groups = new Map<string, number>();
+        for (const obj of objects) {
+          const key = obj.name || typeShapeName[obj.type] || obj.type;
+          groups.set(key, (groups.get(key) || 0) + 1);
+        }
+        const parts: string[] = [];
+        for (const [name, count] of groups) {
+          const objType = objects.find(o => (o.name || typeShapeName[o.type] || o.type) === name)?.type;
+          const unit = unitWords[objType] || '个';
+          const digitMap: Record<number, string> = { 1: '一', 2: '两', 3: '三', 4: '四', 5: '五', 6: '六', 7: '七', 8: '八', 9: '九', 10: '十' };
+          const num = digitMap[count] || count;
+          parts.push(`${num}${unit}${name}`);
+        }
+        const list = parts.join('、');
+        const trail = lastSemantic ? `。上一步操作：${lastSemantic}。` : '。';
+        ttsPlayer?.speak(`画布上有${objects.length}个对象：${list}${trail}`);
+        return true;
+      }
     case 'select': {
       const selCmd = cmd.params ?? {};
       if (selCmd.filters) {
@@ -176,7 +206,7 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
       const subCommands = expandSceneTemplate(sceneKey);
       for (let i = 0; i < subCommands.length; i++) {
         if (i > 0) await delay(600);
-        await executeCanvasCommand(engine, subCommands[i], soundPlayer, ttsPlayer);
+        await executeCanvasCommand(engine, subCommands[i], soundPlayer, ttsPlayer, lastSemantic);
       }
       ttsPlayer?.speak('场景绘制完成');
       return subCommands.length > 0;
@@ -304,7 +334,7 @@ const aiServiceRef = useRef<AiService | null>(null);
       let allOk = true;
      for (const cmd of commands) {
         if (cmd.intent === 'freehand') continue;
-        if (!await executeCanvasCommand(engine, cmd, soundPlayerRef.current, ttsPlayerRef.current)) allOk = false;
+        if (!await executeCanvasCommand(engine, cmd, soundPlayerRef.current, ttsPlayerRef.current, lastSemanticRef)) allOk = false;
       }
 
       // 追踪最后一步语义引用（用于 StatusBar 展示）
