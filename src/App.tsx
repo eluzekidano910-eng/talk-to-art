@@ -258,6 +258,7 @@ const aiServiceRef = useRef<AiService | null>(null);
     // 唤醒词检测：说"小A小A"或"打开程序"激活
     if ((/小[aA诶][,，、]?小[aA诶]/i.test(voiceText) || /打开程序/.test(voiceText) || /^小[aA诶]/.test(voiceText)) && !isAwakeRef.current) {
       isAwakeRef.current = true;
+      ttsPlayerRef.current?.speak('小A已唤醒');
       soundPlayerRef.current?.play('ready');
       setLogEntries(prev => [...prev, {
         id: ++logIdRef.current, rawText: voiceText, commands: [],
@@ -305,9 +306,11 @@ const aiServiceRef = useRef<AiService | null>(null);
         const isSleep = commands.some(c => c.intent === 'sleep');
         if (isSleep) {
           isAwakeRef.current = false;
+          ttsPlayerRef.current?.speak('小A已休眠');
           setVoiceState('standby');
         } else {
           isAwakeRef.current = true;
+          ttsPlayerRef.current?.speak('小A已唤醒');
           setVoiceState('listening');
         }
         soundPlayerRef.current?.play('ready');
