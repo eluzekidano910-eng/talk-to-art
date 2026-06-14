@@ -1,4 +1,4 @@
-﻿/**
+/**
  * AI 模块类型定义
  */
 
@@ -15,7 +15,8 @@ export type CommandIntent =
   | 'sleep'
   | 'wake'
   | 'freehand'
-  | 'select';
+  | 'select',
+  | 'scene';
 
 /** 解析后的命令 */
 export interface Command {

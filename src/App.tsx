@@ -1,4 +1,4 @@
-﻿import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useEffect } from 'react';
 import { VoiceRecognizer } from './voice';
 import type { VoiceResult, VoiceState } from './voice';
@@ -7,7 +7,7 @@ import { MicButton } from './components/MicButton';
 import { DrawingCanvas } from './canvas';
 import type { DrawingCanvasHandle } from './canvas';
 import { CanvasEngine } from './canvas';
-import { CommandParser } from './command';
+import { CommandParser, expandSceneTemplate } from './command';
 import type { Command } from './command';
 import type { DrawShapeOptions, ShapeSize, ShapePosition } from './canvas';
 import { CommandLog } from './components/CommandLog';
@@ -91,6 +91,15 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPlayer?: 
       if (found) soundPlayer?.play('success');
       return found;
     }
+    case 'scene': {
+      const sceneKey = typeof params.scene === 'string' ? params.scene : null;
+      if (!sceneKey) return false;
+      const subCommands = expandSceneTemplate(sceneKey);
+      for (const sub of subCommands) {
+        executeCanvasCommand(engine, sub, soundPlayer);
+      }
+      return subCommands.length > 0;
+    }
     default:
       return false;
     }
@@ -149,7 +158,7 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPlayer?: 
       let commands;
 
       // System intents → rule engine (no AI latency)
-      if (/帮助|怎么用|支持|指令|help|功能|说明|教程|停止|关闭|休眠|结束|暂停|睡眠|开始|启动|恢复|唤醒|继续|开始听|撤销|回退|上一步|后退|undo|重做|redo|前进|清空|清除|重新开始|重置|clear|全部删|导出|保存|下载|export|save|png|图片/.test(voiceText)) {
+      if (/帮助|怎么用|支持|指令|help|功能|说明|教程|停止|关闭|休眠|结束|暂停|睡眠|开始|启动|恢复|唤醒|继续|开始听|撤销|回退|上一步|后退|undo|重做|redo|前进|清空|清除|重新开始|重置|clear|全部删|导出|保存|下载|export|save|png|图片|日出|风景|山水|城市|流程图|笑脸|日落|花海|星空|朝阳|晚霞|风景画|山水画/.test(voiceText)) {
         commands = new CommandParser().parse(voiceText);
       } else if (aiEnabledRef.current && aiInterpreterRef.current && aiServiceRef.current?.isReady) {
         try {

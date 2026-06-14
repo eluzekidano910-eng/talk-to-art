@@ -3,6 +3,7 @@ import { lookupColor } from './dictionary/colors';
 import { lookupSize } from './dictionary/sizes';
 import { lookupPosition } from './dictionary/positions';
 import { lookupSemantic as lookupSemanticPreset } from './SemanticPresets';
+import { lookupScene } from './SceneTemplate';
 
 
 /**
@@ -80,6 +81,8 @@ function extractParams(text: string, intent: CommandIntent): Record<string, unkn
       return extractDrawParams(text);
     case 'edit':
       return extractEditParams(text);
+    case 'scene':
+      return extractSceneParams(text);
     case 'delete':
       return extractDeleteParams(text);
     default:
@@ -211,6 +214,14 @@ function fillDefaults(intent: CommandIntent, params: Record<string, unknown>): R
     default:
       return params;
   }
+}
+ 
+/**
+ * 抽取场景模板参数
+ */
+function extractSceneParams(text: string): Record<string, unknown> {
+  const key = lookupScene(text);
+  return key ? { scene: key } : { scene: 'landscape' };
 }
  
 /**
@@ -385,7 +396,7 @@ export class CommandParser {
    * 获取当前支持的所有分类
    */
   getSupportedIntents(): CommandIntent[] {
-    return ['draw', 'freehand', 'edit', 'select', 'delete', 'undo', 'redo', 'clear', 'export', 'help', 'sleep', 'wake'];
+    return ['draw', 'freehand', 'edit', 'select', 'scene', 'delete', 'undo', 'redo', 'clear', 'export', 'help', 'sleep', 'wake'];
   }
 }
 

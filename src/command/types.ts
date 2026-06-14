@@ -1,4 +1,4 @@
-﻿export type FreehandAction = "start" | "stop";
+export type FreehandAction = "start" | "stop";
 
 export type CommandIntent =
   | 'draw'
@@ -12,7 +12,8 @@ export type CommandIntent =
   | 'sleep'
  | 'wake'
   | 'freehand'
-  | 'select';
+  | 'select',
+  | 'scene';
 
 export type ShapeType = 'circle' | 'rect' | 'triangle' | 'line';
 
