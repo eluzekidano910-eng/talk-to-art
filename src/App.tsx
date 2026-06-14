@@ -24,6 +24,35 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** 形状/颜色中文映射 */
+const SHAPE_NAMES: Record<string, string> = {
+  circle: '圆形', rect: '矩形', triangle: '三角形', line: '线条',
+};
+const COLOR_NAMES: Record<string, string> = {
+  red: '红色', blue: '蓝色', green: '绿色', yellow: '黄色',
+  purple: '紫色', pink: '粉色', orange: '橙色', white: '白色',
+  black: '黑色', gray: '灰色', cyan: '青色', brown: '棕色',
+};
+/** 构建绘制反馈自然语言描述 */
+function buildDrawFeedback(params: Record<string, unknown>): string {
+  const shape = params.shape as string | undefined;
+  const color = params.color as string | undefined;
+  const semanticName = params.semanticName as string | undefined;
+  const count = typeof params.count === 'number' ? params.count : 1;
+
+  const label = semanticName || SHAPE_NAMES[shape ?? ''] || (shape ?? '图形');
+  const colorLabel = color ? COLOR_NAMES[color.toLowerCase()] || color : '';
+
+  if (count > 1) {
+    return colorLabel
+      ? `已画好${count}个${colorLabel}的${label}`
+      : `已画好${count}个${label}`;
+  }
+  return colorLabel
+    ? `已画好一个${colorLabel}的${label}`
+    : `已画好一个${label}`;
+}
+
 /**
  * 执行解析后的语音命令，在画布上绘制或操作
  */
@@ -54,10 +83,15 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
       } else {
         return false;
       }
+      ttsPlayer?.speak(buildDrawFeedback(params));
       return true;
     }
     case 'undo':
-      return engine.undo();
+      {
+        const ok = engine.undo();
+        ttsPlayer?.speak(ok ? '已撤销' : '没有可以撤销的操作');
+        return ok;
+      }
     case 'edit': {
       const editParams = cmd.params ?? {};
       let target = typeof editParams.target === 'string' ? editParams.target : null;
@@ -65,15 +99,42 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
         const active = engine.canvas.getActiveObject();
         target = active ? 'selected' : 'last';
       }
-      return engine.editObjects(target, editParams);
+      const ok = engine.editObjects(target, editParams);
+      if (ok) {
+        const target2 = typeof editParams.target === 'string' ? editParams.target : '';
+        const display = SHAPE_NAMES[target2] || target2 || '对象';
+        const colorName = typeof editParams.color === 'string' ? (COLOR_NAMES[editParams.color.toLowerCase()] || editParams.color) : null;
+        const posEntries: Record<string, string> = {
+          'top-left': '左上角', 'top-center': '上边', 'top-right': '右上角',
+          'center-left': '左边', 'center': '中间', 'center-right': '右边',
+          'bottom-left': '左下角', 'bottom-center': '下边', 'bottom-right': '右下角',
+        };
+        let msg: string;
+        if (editParams.size === 'large') msg = `已将${display}放大`;
+        else if (editParams.size === 'small') msg = `已将${display}缩小`;
+        else if (colorName) msg = `已将${display}改成${colorName}`;
+        else if (typeof editParams.position === 'string') msg = `已将${display}移到${posEntries[editParams.position] || editParams.position}`;
+        else if (typeof editParams.moveDirection === 'string') msg = `已将${display}向${editParams.moveDirection}移动`;
+        else msg = `已编辑${display}`;
+        ttsPlayer?.speak(msg);
+      } else {
+        ttsPlayer?.speak('没有找到可以编辑的对象');
+      }
+      return ok;
     }
     case 'delete': {
       const delParams = cmd.params ?? {};
       const target = typeof delParams.target === 'string' ? delParams.target : 'selected';
-      return engine.deleteObjects(target);
+      const ok = engine.deleteObjects(target);
+      if (ok) ttsPlayer?.speak(target === 'all' ? '已删除所有对象' : '已删除');
+      return ok;
     }
     case 'redo':
-      return engine.redo();
+      {
+        const ok = engine.redo();
+        ttsPlayer?.speak(ok ? '已重做' : '没有可以重做的操作');
+        return ok;
+      }
     case 'clear':
       engine.clear();
       return true;
@@ -90,21 +151,34 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
       const target = typeof selCmd.target === 'string' ? selCmd.target : 'selected';
       if (target === 'deselect') {
         engine.deselectAll();
+        ttsPlayer?.speak('已取消选中');
         soundPlayer?.play('ready');
         return true;
       }
       const found = engine.selectObjects(target);
+      if (found) ttsPlayer?.speak(target === 'all' ? '已选中所有对象' : '已选中');
       if (found) soundPlayer?.play('success');
       return found;
     }
     case 'scene': {
       const sceneKey = typeof params.scene === 'string' ? params.scene : null;
-      if (!sceneKey) return false;
+      if (!sceneKey) {
+        ttsPlayer?.speak('未知场景');
+        return false;
+      }
+      // 查找场景中文名
+      const sceneNames: Record<string, string> = {
+        sunrise: '日出', landscape: '风景', mountains: '山水', city: '城市',
+        flowchart: '流程图', smiley: '笑脸', sunset: '日落', flowerField: '花海',
+        starryNight: '星空',
+      };
+      ttsPlayer?.speak(`正在绘制${sceneNames[sceneKey] || sceneKey}`);
       const subCommands = expandSceneTemplate(sceneKey);
       for (let i = 0; i < subCommands.length; i++) {
         if (i > 0) await delay(600);
         await executeCanvasCommand(engine, subCommands[i], soundPlayer, ttsPlayer);
       }
+      ttsPlayer?.speak('场景绘制完成');
       return subCommands.length > 0;
     }
     default:
