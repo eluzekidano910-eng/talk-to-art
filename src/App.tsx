@@ -351,7 +351,23 @@ const aiServiceRef = useRef<AiService | null>(null);
           ttsPlayerRef.current?.speak('确认清空画布吗？再说一次清空即可');
           continue;
         }
-       if (!await executeCanvasCommand(engine, cmd, soundPlayerRef.current, ttsPlayerRef.current, lastSemanticRef)) allOk = false;
+        // Export 二次确认拦截
+        if (cmd.intent === 'export') {
+          if (pendingActionRef.current?.action === 'export') {
+            clearTimeout(pendingActionRef.current.timer);
+            pendingActionRef.current = null;
+            engine.exportPNG();
+            ttsPlayerRef.current?.speak('图片已导出，正在下载');
+            continue;
+          }
+          pendingActionRef.current = {
+            action: 'export',
+            timer: window.setTimeout(() => { pendingActionRef.current = null; }, 3500),
+          };
+          ttsPlayerRef.current?.speak('确认导出图片吗？再说一次导出即可');
+          continue;
+        }
+        if (!await executeCanvasCommand(engine, cmd, soundPlayerRef.current, ttsPlayerRef.current, lastSemanticRef)) allOk = false;
       }
 
       // 追踪最后一步语义引用（用于 StatusBar 展示）
