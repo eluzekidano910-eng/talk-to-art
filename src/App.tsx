@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+﻿import { useCallback, useRef, useState } from 'react';
 import { useEffect } from 'react';
 import { VoiceRecognizer } from './voice';
 import type { VoiceResult, VoiceState } from './voice';
@@ -7,7 +7,7 @@ import { MicButton } from './components/MicButton';
 import { DrawingCanvas } from './canvas';
 import type { DrawingCanvasHandle } from './canvas';
 import { CanvasEngine } from './canvas';
-import { CommandParser, expandSceneTemplate } from './command';
+import { CommandParser, expandSceneTemplate, getCompoundShapes } from './command';
 import type { Command } from './command';
 import type { DrawShapeOptions, ShapeSize, ShapePosition } from './canvas';
 import { CommandLog } from './components/CommandLog';
@@ -67,6 +67,37 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
       if (typeof params.size === 'string') options.size = params.size as ShapeSize;
       if (typeof params.position === 'string') options.position = params.position as ShapePosition;
       if (typeof params.semanticName === 'string') options.name = params.semanticName;
+
+      // 组合语义对象：多形状拼合绘制
+      const semanticKey = typeof params.semanticName === 'string' ? params.semanticName : null;
+      const compound = semanticKey ? getCompoundShapes(semanticKey) : null;
+      if (compound) {
+        const key = (params.position as string) || 'center';
+        const base = engine.getPosition(key);
+        engine.beginCompound();
+        for (const cs of compound) {
+          const sub: DrawShapeOptions = {
+            left: base.x + (cs.dx ?? 0),
+            top: base.y + (cs.dy ?? 0),
+            color: cs.color,
+            name: semanticKey,
+          };
+          if (cs.radius)  sub.radius  = cs.radius;
+          if (cs.width)   sub.width   = cs.width;
+          if (cs.height)  sub.height  = cs.height;
+          if (cs.stroke)  sub.stroke  = cs.stroke;
+          if (cs.strokeWidth) sub.strokeWidth = cs.strokeWidth;
+          switch (cs.shape) {
+            case 'circle':   engine.drawCircle(sub);   break;
+            case 'rect':     engine.drawRect(sub);     break;
+            case 'triangle': engine.drawTriangle(sub); break;
+            case 'line':     engine.drawLine(sub);     break;
+          }
+        }
+        engine.endCompound();
+        ttsPlayer?.speak(buildDrawFeedback(params));
+        return true;
+      }
 
       const count = typeof params.count === 'number' ? params.count : 1;
       const batchShapes = ['circle', 'rect', 'triangle', 'line'];
@@ -176,7 +207,9 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
     case 'select': {
       const selCmd = cmd.params ?? {};
       if (selCmd.filters) {
-        return engine.selectObjectsByFilters(selCmd.filters as Record<string, string>[]);
+        const ok = engine.selectObjectsByFilters(selCmd.filters as Record<string, string>[]);
+        ttsPlayer?.speak(ok ? '已选中' : '未找到匹配对象');
+        return ok;
       }
       const target = typeof selCmd.target === 'string' ? selCmd.target : 'selected';
       if (target === 'deselect') {
@@ -251,6 +284,9 @@ const aiServiceRef = useRef<AiService | null>(null);
   const isAwakeRef = useRef(false);
   const pendingActionRef = useRef<{ action: string; timer: number } | null>(null);
 
+  // ── 确认关键词（用于 export / clear 二次确认）──
+  const CONFIRM_KEYWORDS = /确认|确定|导出|是的|好|可以|行|保存|下载|没错|对|嗯/;
+
   // 语音最终结果 → 解析 → 执行 → 音效 + 日志
   useEffect(() => {
     if (!isFinal || !voiceText) return;
@@ -273,7 +309,30 @@ const aiServiceRef = useRef<AiService | null>(null);
     const engine = canvasRef.current?.engine;
     if (!engine) return;
 
-    // AI 解析优先，失败则回退到规则引擎
+
+    // ── 二次确认关键词检测（不等 TTS 说完，听到确认词立即执行）──
+    const pending = pendingActionRef.current;
+    if (pending && CONFIRM_KEYWORDS.test(voiceText)) {
+      clearTimeout(pending.timer);
+      pendingActionRef.current = null;
+      ttsPlayerRef.current?.cancel();
+      if (pending.action === 'export') {
+        engine.exportPNG();
+        ttsPlayerRef.current?.speak('图片已导出，正在下载');
+      } else if (pending.action === 'clear') {
+        engine.clear();
+        ttsPlayerRef.current?.speak('画布已清空');
+      }
+      soundPlayerRef.current?.play('success');
+      setLogEntries(prev => [...prev, {
+        id: ++logIdRef.current, rawText: voiceText,
+        commands: [{ intent: pending.action, params: {} }],
+        status: 'success',
+      }].slice(-50));
+      return;
+    }
+
+    // AI 
     (async () => {
       let commands;
 
@@ -351,7 +410,7 @@ const aiServiceRef = useRef<AiService | null>(null);
             action: 'clear',
             timer: window.setTimeout(() => { pendingActionRef.current = null; }, 3500),
           };
-          ttsPlayerRef.current?.speak('确认清空画布吗？再说一次清空即可');
+          ttsPlayerRef.current?.speak('确认清空画布吗？说确认即可');
           continue;
         }
         // Export 二次确认拦截
@@ -367,7 +426,7 @@ const aiServiceRef = useRef<AiService | null>(null);
             action: 'export',
             timer: window.setTimeout(() => { pendingActionRef.current = null; }, 3500),
           };
-          ttsPlayerRef.current?.speak('确认导出图片吗？再说一次导出即可');
+          ttsPlayerRef.current?.speak('确认导出图片吗？说确认即可');
           continue;
         }
         if (!await executeCanvasCommand(engine, cmd, soundPlayerRef.current, ttsPlayerRef.current, lastSemanticRef)) allOk = false;
