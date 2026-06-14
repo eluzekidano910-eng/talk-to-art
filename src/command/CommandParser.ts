@@ -168,7 +168,9 @@ function extractEditParams(text: string): Record<string, unknown> {
     if (semantic) params.target = semantic;
   } else if (/上?一个|最近|最后/.test(text)) {
     params.target = 'last';
-  } else if (/它|这个|那个|当前|选中|它们|他们/.test(text)) {
+  } else if (/它|这个|那个|它们|他们/.test(text)) {
+    params.target = 'last';
+  } else if (/当前|选中/.test(text)) {
     params.target = 'selected';
   }
 
@@ -180,7 +182,8 @@ function extractEditParams(text: string): Record<string, unknown> {
  */
 function extractDeleteParams(text: string): Record<string, unknown> {
   const params: Record<string, unknown> = {};
-  if (/它|这个|那个|当前|选中|它们|他们/.test(text)) params.target = 'selected';
+  if (/它|这个|那个|它们|他们/.test(text)) params.target = 'last';
+  else if (/当前|选中/.test(text)) params.target = 'selected';
   else if (/所有|全部|everything/.test(text)) params.target = 'all';
   else {
     const semantic = resolveSemanticName(text);
