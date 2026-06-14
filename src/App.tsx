@@ -249,6 +249,7 @@ const aiServiceRef = useRef<AiService | null>(null);
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const logIdRef = useRef(0);
   const isAwakeRef = useRef(false);
+  const pendingActionRef = useRef<{ action: string; timer: number } | null>(null);
 
   // 语音最终结果 → 解析 → 执行 → 音效 + 日志
   useEffect(() => {
@@ -333,8 +334,24 @@ const aiServiceRef = useRef<AiService | null>(null);
       }
       let allOk = true;
      for (const cmd of commands) {
-        if (cmd.intent === 'freehand') continue;
-        if (!await executeCanvasCommand(engine, cmd, soundPlayerRef.current, ttsPlayerRef.current, lastSemanticRef)) allOk = false;
+       if (cmd.intent === 'freehand') continue;
+        // Clear 二次确认拦截
+        if (cmd.intent === 'clear') {
+          if (pendingActionRef.current?.action === 'clear') {
+            clearTimeout(pendingActionRef.current.timer);
+            pendingActionRef.current = null;
+            engine.clear();
+            ttsPlayerRef.current?.speak('画布已清空');
+            continue;
+          }
+          pendingActionRef.current = {
+            action: 'clear',
+            timer: window.setTimeout(() => { pendingActionRef.current = null; }, 3500),
+          };
+          ttsPlayerRef.current?.speak('确认清空画布吗？再说一次清空即可');
+          continue;
+        }
+       if (!await executeCanvasCommand(engine, cmd, soundPlayerRef.current, ttsPlayerRef.current, lastSemanticRef)) allOk = false;
       }
 
       // 追踪最后一步语义引用（用于 StatusBar 展示）
