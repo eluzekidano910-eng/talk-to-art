@@ -21,7 +21,7 @@ import type { AiConfig } from './ai';
 /**
  * 执行解析后的语音命令，在画布上绘制或操作
  */
-function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
+function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPlayer?: SoundPlayer): boolean {
   const params = cmd.params ?? {};
 
   switch (cmd.intent) {
@@ -74,9 +74,12 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
       const target = typeof selCmd.target === 'string' ? selCmd.target : 'selected';
       if (target === 'deselect') {
         engine.deselectAll();
+        soundPlayer?.play('ready');
         return true;
       }
-      return engine.selectObjects(target);
+      const found = engine.selectObjects(target);
+      if (found) soundPlayer?.play('success');
+      return found;
     }
     default:
       return false;
@@ -192,9 +195,9 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
         }
       }
       let allOk = true;
-      for (const cmd of commands) {
+     for (const cmd of commands) {
         if (cmd.intent === 'freehand') continue;
-        if (!executeCanvasCommand(engine, cmd)) allOk = false;
+        if (!executeCanvasCommand(engine, cmd, soundPlayerRef.current)) allOk = false;
       }
 
       // 音效反馈
