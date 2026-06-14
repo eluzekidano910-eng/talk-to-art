@@ -1,7 +1,9 @@
-﻿import type { Command, CommandIntent, ShapeType, ParseResult, NormalizedToken } from './types';
+import type { Command, CommandIntent, ShapeType, ParseResult, NormalizedToken } from './types';
 import { lookupColor } from './dictionary/colors';
 import { lookupSize } from './dictionary/sizes';
 import { lookupPosition } from './dictionary/positions';
+import { lookupSemantic as lookupSemanticPreset } from './SemanticPresets';
+
 
 /**
  * 将拆分后的单句解析为一个 Command
@@ -190,6 +192,13 @@ function extractDeleteParams(text: string): Record<string, unknown> {
 function fillDefaults(intent: CommandIntent, params: Record<string, unknown>): Record<string, unknown> {
   switch (intent) {
     case 'draw':
+      // 语义对象预设：{ ...preset, ...params } — 用户/AI 已给的字段不被覆盖
+      if (typeof params.semanticName === 'string') {
+        const preset = lookupSemanticPreset(params.semanticName);
+        if (preset) {
+          return { count: 1, ...preset, ...params };
+        }
+      }
       return {
         shape: 'circle',
         count: 1,
@@ -376,7 +385,7 @@ export class CommandParser {
    * 获取当前支持的所有分类
    */
   getSupportedIntents(): CommandIntent[] {
-    return ['draw', 'edit', 'delete', 'undo', 'redo', 'clear', 'export', 'help', 'sleep', 'wake'];
+    return ['draw', 'freehand', 'edit', 'select', 'delete', 'undo', 'redo', 'clear', 'export', 'help', 'sleep', 'wake'];
   }
 }
 
