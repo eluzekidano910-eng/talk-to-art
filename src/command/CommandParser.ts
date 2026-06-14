@@ -139,6 +139,16 @@ function extractEditParams(text: string): Record<string, unknown> {
     const dirMatch = text.match(/向(左|右|上|下)/);
     if (dirMatch) params.moveDirection = dirMatch[1];
   }
+ 
+  // 旋转角度
+  const rotMatch = text.match(/(\d+)\s*度/);
+  if (rotMatch) {
+    if (/逆时针|向左|左转/.test(text)) {
+      params.rotation = -parseInt(rotMatch[1]);
+    } else {
+      params.rotation = parseInt(rotMatch[1]);
+    }
+  }
 
   // 位置（用于辅助定位）
   const position = resolvePositionToken(text);

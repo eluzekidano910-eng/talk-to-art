@@ -254,7 +254,8 @@ export class CanvasEngine {
     // 仅在有实际修改时保存快照，纯选中不产生历史记录
     const hasChanges = typeof changes.color === 'string' ||
       changes.size === 'large' || changes.size === 'small' ||
-      typeof changes.moveDirection === 'string';
+     typeof changes.moveDirection === 'string' ||
+     typeof changes.rotation === 'number';
 
     if (hasChanges) this.saveState();
 
@@ -278,7 +279,10 @@ export class CanvasEngine {
           case '下': obj.set('top', (obj.top ?? 0) + step); break;
         }
       }
-      obj.setCoords();
+     if (typeof changes.rotation === 'number') {
+       obj.set('angle', (obj.angle ?? 0) + changes.rotation);
+     }
+     obj.setCoords();
     }
 
     // 自动选中被操作的对象（便于视觉反馈）
