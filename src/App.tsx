@@ -33,13 +33,20 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPlayer?: 
       if (typeof params.position === 'string') options.position = params.position as ShapePosition;
       if (typeof params.semanticName === 'string') options.name = params.semanticName;
 
-      const _count = typeof params.count === 'number' ? params.count : 1;
-      switch (shape) {
-        case 'circle': for (let i = 0; i < _count; i++) { engine.drawCircle(options); } break;
-        case 'rect': for (let i = 0; i < _count; i++) { engine.drawRect(options); } break;
-        case 'triangle': for (let i = 0; i < _count; i++) { engine.drawTriangle(options); } break;
-        case 'line': for (let i = 0; i < _count; i++) { engine.drawLine(options); } break;
-        default: return false;
+      const count = typeof params.count === 'number' ? params.count : 1;
+      const batchShapes = ['circle', 'rect', 'triangle', 'line'];
+      if (count > 1 && batchShapes.includes(shape)) {
+        engine.drawShapeBatch(shape as 'circle' | 'rect' | 'triangle' | 'line', options, count);
+      } else if (shape === 'circle') {
+        engine.drawCircle(options);
+      } else if (shape === 'rect') {
+        engine.drawRect(options);
+      } else if (shape === 'triangle') {
+        engine.drawTriangle(options);
+      } else if (shape === 'line') {
+        engine.drawLine(options);
+      } else {
+        return false;
       }
       return true;
     }

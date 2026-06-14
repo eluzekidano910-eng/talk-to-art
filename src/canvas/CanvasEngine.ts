@@ -181,6 +181,101 @@ export class CanvasEngine {
     return line;
   }
 
+  // ── Batch Draw（count > 1 时网格自动排列）──
+
+  drawShapeBatch(
+    shape: 'circle' | 'rect' | 'triangle' | 'line',
+    options: DrawShapeOptions = {},
+    count: number,
+  ): void {
+    if (count <= 0) return;
+    if (count === 1) {
+      switch (shape) {
+        case 'circle': this.drawCircle(options); return;
+        case 'rect': this.drawRect(options); return;
+        case 'triangle': this.drawTriangle(options); return;
+        case 'line': this.drawLine(options); return;
+      }
+    }
+
+    this.saveState();
+
+    const size = SIZE_PRESETS[options.size ?? 'medium'];
+    const maxPerRow = 3;
+    const rows = Math.ceil(count / maxPerRow);
+
+    let objW: number;
+    switch (shape) {
+      case 'circle': objW = size.circleRadius * 2; break;
+      case 'rect': objW = size.rectSide; break;
+      case 'triangle': objW = size.triangleSide; break;
+      default: objW = this.width * 0.8;
+    }
+
+    const gapX = objW * 1.6;
+    const gapY = objW * 2;
+    const pos = options.position ?? 'center';
+    const baseLeft = this.width * POSITION_PRESETS[pos].leftFrac;
+    const baseTop = this.height * POSITION_PRESETS[pos].topFrac;
+    const fill = resolveColor(options.color);
+
+    for (let i = 0; i < count; i++) {
+      const row = Math.floor(i / maxPerRow);
+      const col = i % maxPerRow;
+      const itemsInRow = Math.min(maxPerRow, count - row * maxPerRow);
+      const left = baseLeft + (col - (itemsInRow - 1) / 2) * gapX;
+      const top = baseTop + (row - (rows - 1) / 2) * gapY;
+
+      switch (shape) {
+        case 'circle': {
+          const c = new Circle({
+            left, top, radius: size.circleRadius, fill,
+            name: options.name,
+            stroke: options.stroke,
+            strokeWidth: options.strokeWidth ?? 0,
+            originX: 'center', originY: 'center',
+          });
+          this.canvas.add(c);
+          break;
+        }
+        case 'rect': {
+          const r = new Rect({
+            left, top, width: size.rectSide, height: size.rectSide,
+            fill, name: options.name,
+            stroke: options.stroke,
+            strokeWidth: options.strokeWidth ?? 0,
+            originX: 'center', originY: 'center',
+          });
+          this.canvas.add(r);
+          break;
+        }
+        case 'triangle': {
+          const t = new Triangle({
+            left, top, width: size.triangleSide, height: size.triangleSide,
+            fill, name: options.name,
+            stroke: options.stroke,
+            strokeWidth: options.strokeWidth ?? 0,
+            originX: 'center', originY: 'center',
+          });
+          this.canvas.add(t);
+          break;
+        }
+        case 'line': {
+          const halfW = objW / 2;
+          const l = new Line([left - halfW, top, left + halfW, top], {
+            stroke: fill,
+            strokeWidth: options.strokeWidth ?? 3,
+            name: options.name,
+          });
+          this.canvas.add(l);
+          break;
+        }
+      }
+    }
+
+    this.canvas.renderAll();
+  }
+
   // ── Helpers ──
 
   private resolvePosition(
