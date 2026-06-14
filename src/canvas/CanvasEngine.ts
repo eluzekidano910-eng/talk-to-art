@@ -44,6 +44,7 @@ export class CanvasEngine {
   private history: string[] = [];
   private historyIndex: number = -1;
   private readonly MAX_HISTORY = 50;
+  private _skipSave = false;
 
   constructor(canvasEl: HTMLCanvasElement) {
     this.canvas = new Canvas(canvasEl, {
@@ -516,8 +517,28 @@ export class CanvasEngine {
     return JSON.stringify(this.canvas.toJSON());
   }
 
+  /** 开始组合绘制：内部子形状不再各自保存历史快照 */
+  beginCompound(): void {
+    this.saveState();
+    this._skipSave = true;
+  }
+
+  /** 结束组合绘制，恢复单步历史保存 */
+  endCompound(): void {
+    this._skipSave = false;
+    this.canvas.renderAll();
+  }
+
+  /** 获取指定位置键的绝对像素坐标 */
+  getPosition(key: string): { x: number; y: number } {
+    const p = (POSITION_PRESETS as Record<string, { leftFrac: number; topFrac: number }>)[key];
+    if (!p) return { x: this.width * 0.5, y: this.height * 0.5 };
+    return { x: this.width * p.leftFrac, y: this.height * p.topFrac };
+  }
+
   /** 保存当前画布快照到历史栈 */
   private saveState(): void {
+    if (this._skipSave) return;
     // 清除重做栈（新操作后不可重做）
     this.history = this.history.slice(0, this.historyIndex + 1);
     this.history.push(this.getJSON());
