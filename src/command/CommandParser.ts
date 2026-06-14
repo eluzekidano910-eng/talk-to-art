@@ -55,6 +55,7 @@ function recognizeIntent(text: string): CommandIntent | null {
   // 删除
   if (/删除|删掉|移除|去掉|delete|remove|擦/.test(text)) return 'delete';
   // 选中（独立意图，优先于 edit）
+  if (/取消选择|取消选中|不选了/.test(text)) return 'select';
   if (/选中|选择|全选/.test(text)) return 'select';
   // 编辑
   if (/(改成?|变(成|大|小|色|颜色|红|蓝|绿|黄)|放大|缩小|移动|向(左|右|上|下)|变大|变小|换色|旋转|选中|全选)/.test(text)) return 'edit';
@@ -198,7 +199,8 @@ function fillDefaults(intent: CommandIntent, params: Record<string, unknown>): R
  */
 function extractSelectParams(text: string): Record<string, unknown> {
   const params: Record<string, unknown> = {};
-  if (/所有|全部/.test(text)) params.target = 'all';
+  if (/取消选择|取消选中|不选了/.test(text)) params.target = 'deselect';
+  else if (/所有|全部/.test(text)) params.target = 'all';
   else if (/圆|圈|方形|矩形|正方|三角|线/.test(text)) {
     const shape = resolveShape(text);
     if (shape) params.target = shape;
