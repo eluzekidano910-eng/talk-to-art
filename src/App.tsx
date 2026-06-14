@@ -24,6 +24,9 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** 唤醒词匹配：小a小a / 小A小A / 小A语音 / 打开程序 */
+const WAKE_REGEX = /小[Aa]小[Aa]|小[Aa]语音|打开程序/;
+
 /** 形状/颜色中文映射 */
 const SHAPE_NAMES: Record<string, string> = {
   circle: '圆形', rect: '矩形', triangle: '三角形', line: '线条',
@@ -292,7 +295,7 @@ const aiServiceRef = useRef<AiService | null>(null);
     if (!isFinal || !voiceText) return;
 
     // 唤醒词检测：说"小A小A"或"打开程序"激活
-    if ((/小[aA诶][,，、]?小[aA诶]/i.test(voiceText) || /打开程序/.test(voiceText) || /^小[aA诶]/.test(voiceText)) && !isAwakeRef.current) {
+      if (WAKE_REGEX.test(voiceText) && !isAwakeRef.current) {
       isAwakeRef.current = true;
       ttsPlayerRef.current?.speak('小A已唤醒');
       soundPlayerRef.current?.play('ready');
@@ -464,8 +467,11 @@ const aiServiceRef = useRef<AiService | null>(null);
           { lang: 'zh-CN', continuous: true, interimResults: true },
           {
             onResult: (result: VoiceResult) => {
-              setVoiceText(result.text);
-              setIsFinal(result.isFinal);
+                // 休眠状态下只捕获唤醒词，其余文本不输出
+                const isWakeLike = WAKE_REGEX.test(result.text);
+                if (!isAwakeRef.current && !isWakeLike) return;
+                setVoiceText(result.text);
+                setIsFinal(result.isFinal);
               if (result.isFinal) {
                 setVoiceState('processing');
               }
