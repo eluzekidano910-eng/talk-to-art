@@ -1,12 +1,13 @@
-﻿import type { VoiceState } from "../voice";
+import type { VoiceState } from "../voice";
 
 interface StatusBarProps {
   voiceState: VoiceState;
   isAwake: boolean;
   isFreehand: boolean;
+  lastSemanticRef?: string | null;
 }
 
-export function StatusBar({ voiceState, isAwake, isFreehand }: StatusBarProps) {
+export function StatusBar({ voiceState, isAwake, isFreehand, lastSemanticRef }: StatusBarProps) {
   const stateLabel: Record<VoiceState, string> = {
     idle: "\u7a7a\u95f2",
     standby: "\u5f85\u547d",
@@ -29,6 +30,7 @@ export function StatusBar({ voiceState, isAwake, isFreehand }: StatusBarProps) {
       </span>
       {isAwake && <span className="text-emerald-400/60">\u5df2\u5524\u9192</span>}
       {isFreehand && <span className="text-blue-400/60">\u753b\u7b14\u6a21\u5f0f</span>}
+      {lastSemanticRef && <span className="text-amber-400/60">\u4e0a\u4e00\u6b65\uff1a{lastSemanticRef}</span>}
     </div>
   );
 }

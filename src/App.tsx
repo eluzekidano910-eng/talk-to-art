@@ -124,6 +124,7 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
  const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsKey, setSettingsKey] = useState(0);
   const [isFreehand, setIsFreehand] = useState(false);
+  const [lastSemanticRef, setLastSemanticRef] = useState<string | null>(null);
 
   const [supported, setSupported] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
@@ -223,6 +224,12 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
      for (const cmd of commands) {
         if (cmd.intent === 'freehand') continue;
         if (!await executeCanvasCommand(engine, cmd, soundPlayerRef.current)) allOk = false;
+      }
+
+      // 追踪最后一步语义引用（用于 StatusBar 展示）
+      const lastDrawCmd = [...commands].reverse().find(c => c.intent === 'draw' && c.params?.semanticName);
+      if (lastDrawCmd?.params?.semanticName) {
+        setLastSemanticRef(lastDrawCmd.params.semanticName as string);
       }
 
       // 音效反馈
@@ -349,6 +356,7 @@ async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPla
       </div>
 
       <div className="brand-watermark">小A · 语音绘图</div>
+      <StatusBar voiceState={voiceState} isAwake={isAwakeRef.current} isFreehand={isFreehand} lastSemanticRef={lastSemanticRef} />
  
       <CommandLog entries={logEntries} />
 
