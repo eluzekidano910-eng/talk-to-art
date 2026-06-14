@@ -45,6 +45,7 @@ export class CanvasEngine {
   private historyIndex: number = -1;
   private readonly MAX_HISTORY = 50;
   private _skipSave = false;
+  private _preCount = 0;
 
   constructor(canvasEl: HTMLCanvasElement) {
     this.canvas = new Canvas(canvasEl, {
@@ -87,8 +88,10 @@ export class CanvasEngine {
     });
 
     this.canvas.add(circle);
-    this.canvas.discardActiveObject();
-    this.canvas.setActiveObject(circle);
+    if (!this._skipSave) {
+      this.canvas.discardActiveObject();
+      this.canvas.setActiveObject(circle);
+    }
     this.canvas.renderAll();
     return circle;
   }
@@ -117,8 +120,10 @@ export class CanvasEngine {
     });
 
     this.canvas.add(rect);
-    this.canvas.discardActiveObject();
-    this.canvas.setActiveObject(rect);
+    if (!this._skipSave) {
+      this.canvas.discardActiveObject();
+      this.canvas.setActiveObject(rect);
+    }
     this.canvas.renderAll();
     return rect;
   }
@@ -146,8 +151,10 @@ export class CanvasEngine {
     });
 
     this.canvas.add(triangle);
-    this.canvas.discardActiveObject();
-    this.canvas.setActiveObject(triangle);
+    if (!this._skipSave) {
+      this.canvas.discardActiveObject();
+      this.canvas.setActiveObject(triangle);
+    }
     this.canvas.renderAll();
     return triangle;
   }
@@ -176,8 +183,10 @@ export class CanvasEngine {
     });
 
     this.canvas.add(line);
-    this.canvas.discardActiveObject();
-    this.canvas.setActiveObject(line);
+    if (!this._skipSave) {
+      this.canvas.discardActiveObject();
+      this.canvas.setActiveObject(line);
+    }
     this.canvas.renderAll();
     return line;
   }
@@ -396,16 +405,21 @@ export class CanvasEngine {
      obj.setCoords();
     }
 
-    // 自动选中被操作的对象（便于视觉反馈）
-    if (target !== 'all' && objects.length > 0) {
-      this.canvas.discardActiveObject();
-      if (changes.selectAll && objects.length > 1) {
-        const sel = new ActiveSelection(objects, { canvas: this.canvas });
-        this.canvas.setActiveObject(sel);
-      } else {
-        this.canvas.setActiveObject(objects[0]);
+      // 自动选中被操作的对象（便于视觉反馈）
+      if (target !== 'all' && objects.length > 0) {
+        const active = this.canvas.getActiveObject();
+        const stillSelected = objects.length === 1 && active === objects[0];
+        if (!stillSelected) {
+          this.canvas.discardActiveObject();
+          if (changes.selectAll && objects.length > 1) {
+            const sel = new ActiveSelection(objects, { canvas: this.canvas });
+            this.canvas.setActiveObject(sel);
+          } else {
+            this.canvas.setActiveObject(objects[0]);
+          }
+        }
+        this.canvas.renderAll();
       }
-    }
 
     this.canvas.renderAll();
     return true;
@@ -520,12 +534,23 @@ export class CanvasEngine {
   /** 开始组合绘制：内部子形状不再各自保存历史快照 */
   beginCompound(): void {
     this.saveState();
+    this._preCount = this.canvas.getObjects().length;
     this._skipSave = true;
   }
 
-  /** 结束组合绘制，恢复单步历史保存 */
+  /** 结束组合绘制，恢复单步历史保存，并将新增对象组合选中 */
   endCompound(): void {
     this._skipSave = false;
+    const added = this.canvas.getObjects().slice(this._preCount);
+    if (added.length > 0) {
+      this.canvas.discardActiveObject();
+      if (added.length === 1) {
+        this.canvas.setActiveObject(added[0]);
+      } else {
+        const sel = new ActiveSelection(added, { canvas: this.canvas });
+        this.canvas.setActiveObject(sel);
+      }
+    }
     this.canvas.renderAll();
   }
 
