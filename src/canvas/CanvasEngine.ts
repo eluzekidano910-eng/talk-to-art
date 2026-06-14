@@ -254,7 +254,8 @@ export class CanvasEngine {
     // 仅在有实际修改时保存快照，纯选中不产生历史记录
     const hasChanges = typeof changes.color === 'string' ||
       changes.size === 'large' || changes.size === 'small' ||
-     typeof changes.moveDirection === 'string' ||
+    typeof changes.position === 'string' ||
+    typeof changes.moveDirection === 'string' ||
      typeof changes.rotation === 'number';
 
     if (hasChanges) this.saveState();
@@ -281,6 +282,13 @@ export class CanvasEngine {
       }
      if (typeof changes.rotation === 'number') {
        obj.set('angle', (obj.angle ?? 0) + changes.rotation);
+     }
+     if (typeof changes.position === 'string') {
+       const pos = POSITION_PRESETS[changes.position];
+       if (pos) {
+         obj.set('left', this.width * pos.leftFrac);
+         obj.set('top', this.height * pos.topFrac);
+       }
      }
      obj.setCoords();
     }
