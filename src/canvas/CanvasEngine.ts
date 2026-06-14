@@ -359,7 +359,47 @@ export class CanvasEngine {
     return true;
   }
  
-  /** 取消选中所有对象 */
+  /** 多选：按过滤条件列表分别匹配对象并合选 */
+  selectObjectsByFilters(filters: Record<string, string>[]): boolean {
+    const matched: any[] = [];
+    for (const filter of filters) {
+      const candidates = this.canvas.getObjects().filter((obj: any) => {
+        if (filter.shape && obj.type !== filter.shape) return false;
+        if (filter.color && resolveColor(filter.color) !== obj.fill) return false;
+        if (filter.semanticName && obj.name !== filter.semanticName) return false;
+        return true;
+      });
+      if (candidates.length === 0) continue;
+      if (filter.position) {
+        const pos = POSITION_PRESETS[filter.position];
+        if (pos) {
+          let closest = candidates[0];
+          let minDist = Infinity;
+          for (const obj of candidates) {
+            const dx = (obj.left ?? 0) - (this.width * pos.leftFrac);
+            const dy = (obj.top ?? 0) - (this.height * pos.topFrac);
+            const d = dx * dx + dy * dy;
+            if (d < minDist) { minDist = d; closest = obj; }
+          }
+          matched.push(closest);
+          continue;
+        }
+      }
+      matched.push(candidates[0]);
+    }
+    if (matched.length === 0) return false;
+    this.canvas.discardActiveObject();
+    if (matched.length > 1) {
+      const sel = new ActiveSelection(matched, { canvas: this.canvas });
+      this.canvas.setActiveObject(sel);
+    } else {
+      this.canvas.setActiveObject(matched[0]);
+    }
+    this.canvas.renderAll();
+    return true;
+  }
+
+ /** 取消选中所有对象 */
   deselectAll(): void {
     this.canvas.discardActiveObject();
     this.canvas.renderAll();

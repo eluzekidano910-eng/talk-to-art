@@ -71,6 +71,9 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPlayer?: 
       return true;
     case 'select': {
       const selCmd = cmd.params ?? {};
+      if (selCmd.filters) {
+        return engine.selectObjectsByFilters(selCmd.filters as Record<string, string>[]);
+      }
       const target = typeof selCmd.target === 'string' ? selCmd.target : 'selected';
       if (target === 'deselect') {
         engine.deselectAll();

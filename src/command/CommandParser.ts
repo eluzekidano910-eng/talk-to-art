@@ -205,11 +205,29 @@ function fillDefaults(intent: CommandIntent, params: Record<string, unknown>): R
 }
  
 /**
+ * 抽取自由绘制参数 — 区分 start/stop
+ */
+function extractFreehandParams(text: string): Record<string, unknown> {
+  const params: Record<string, unknown> = {};
+  if (/停止画画|完成画|结束画|退出画笔/.test(text)) {
+    params.action = 'stop';
+  } else {
+    params.action = 'start';
+  }
+  return params;
+}
+
+/**
  * 抽取选中参数
  */
 function extractSelectParams(text: string): Record<string, unknown> {
   const params: Record<string, unknown> = {};
   if (/取消选择|取消选中|不选了/.test(text)) params.target = 'deselect';
+  else if (/和|与|、/.test(text)) {
+    const segments = text.split(/和|与|、/).map(s => s.trim()).filter(Boolean);
+    const filters = segments.map(seg => extractObjectFilter(seg)).filter(Boolean);
+    if (filters.length > 0) params.filters = filters;
+  }
   else if (/所有|全部|全选/.test(text)) params.target = 'all';
   else if (/圆|圈|方形|矩形|正方|三角|线/.test(text)) {
     const shape = resolveShape(text);
@@ -219,6 +237,22 @@ function extractSelectParams(text: string): Record<string, unknown> {
     if (semantic) params.target = semantic;
   } else params.target = 'selected';
   return params;
+}
+ 
+/**
+ * 从文本中提取对象过滤条件（用于多选）
+ */
+function extractObjectFilter(text: string): Record<string, string> | null {
+  const filter: Record<string, string> = {};
+  const shape = resolveShape(text);
+  if (shape) filter.shape = shape;
+  const color = resolveColorToken(text);
+  if (color) filter.color = color.name;
+  const position = resolvePositionToken(text);
+  if (position) filter.position = position;
+  const semantic = resolveSemanticName(text);
+  if (semantic) filter.semanticName = semantic;
+  return Object.keys(filter).length > 0 ? filter : null;
 }
 
 // ════════════════════════════════════════
