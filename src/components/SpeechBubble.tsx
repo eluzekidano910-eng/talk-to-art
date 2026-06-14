@@ -82,7 +82,7 @@ export function SpeechBubble({ text, isFinal, state }: SpeechBubbleProps) {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
             </span>
-            <span className="text-sm text-emerald-200/70">🕊 🕊 小白在听 说“小白小白”或“打开程序”唤醒我吧～～</span>
+            <span className="text-sm text-emerald-200/70">🕊 🕊 小A在听 说"小A小A"或"打开程序"唤醒我吧～～</span>
           </div>
         )}
 
@@ -92,7 +92,7 @@ export function SpeechBubble({ text, isFinal, state }: SpeechBubbleProps) {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
             </span>
-            <span className="text-sm text-white/70">小白已唤醒 请说指令～～</span>
+            <span className="text-sm text-white/70">小A已唤醒 请说指令～～</span>
           </div>
         )}
 

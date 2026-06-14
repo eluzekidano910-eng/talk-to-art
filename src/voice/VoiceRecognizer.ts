@@ -43,6 +43,11 @@ export class VoiceRecognizer {
     this.bindEvents();
   }
 
+  /** 是否已成功初始化 */
+  isReady(): boolean {
+    return this.recognition !== null;
+  }
+
   /** 当前状态 */
   get state(): VoiceState {
     return this._state;

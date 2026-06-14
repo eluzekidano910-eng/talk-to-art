@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+﻿import { useCallback, useRef, useState } from 'react';
 import { useEffect } from 'react';
 import { VoiceRecognizer } from './voice';
 import type { VoiceResult, VoiceState } from './voice';
@@ -127,7 +127,10 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
     (async () => {
       let commands;
 
-      if (aiEnabledRef.current && aiInterpreterRef.current && aiServiceRef.current?.isReady) {
+      // System intents → rule engine (no AI latency)
+      if (/帮助|怎么用|支持|指令|help|功能|说明|教程|停止|关闭|休眠|结束|暂停|睡眠|开始|启动|恢复|唤醒|继续|开始听|撤销|回退|上一步|后退|undo|重做|redo|前进|清空|清除|重新开始|重置|clear|全部删|导出|保存|下载|export|save|png|图片/.test(voiceText)) {
+        commands = new CommandParser().parse(voiceText);
+      } else if (aiEnabledRef.current && aiInterpreterRef.current && aiServiceRef.current?.isReady) {
         try {
           const aiCmds = await aiInterpreterRef.current.parse(voiceText);
           commands = aiCmds.length > 0 ? aiCmds : new CommandParser().parse(voiceText);
