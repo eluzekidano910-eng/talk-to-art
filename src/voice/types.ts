@@ -1,7 +1,7 @@
-/** 语音识别状态 */
-export type VoiceState = 'idle' | 'listening' | 'processing' | 'error';
+ /** 语音识别状态 */
+export type VoiceState = 'idle' | 'standby' | 'listening' | 'processing' | 'error';
 
-/** 语音识别结果 */
+ /** 语音识别结果 */
 export interface VoiceResult {
   /** 识别文本 */
   text: string;
