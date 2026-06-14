@@ -20,6 +20,7 @@ import {
 const VALID_INTENTS_SET = new Set([
   'draw', 'edit', 'delete', 'undo', 'redo', 'clear', 'export', 'help', 'sleep', 'wake', 'freehand',
   'select',
+  'scene',
 ]);
 const VALID_SHAPES_SET = new Set(['circle', 'rect', 'triangle', 'line']);
 const VALID_COLORS_SET = new Set([

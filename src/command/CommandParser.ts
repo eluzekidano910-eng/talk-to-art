@@ -57,6 +57,8 @@ function recognizeIntent(text: string): CommandIntent | null {
   if (/导出|保存|下载|export|save|png|图片/.test(text)) return 'export';
   // 删除
   if (/删除|删掉|移除|去掉|delete|remove|擦/.test(text)) return 'delete';
+  // 场景模板（本地展开，不经过 AI）
+  if (/日出|风景|山水|城市|流程图|笑脸|日落|花海|星空/.test(text)) return 'scene';
   // 选中（独立意图，优先于 edit）
   if (/取消选择|取消选中|不选了/.test(text)) return 'select';
   if (/选中|选择|全选/.test(text)) return 'select';
