@@ -20,7 +20,7 @@ export const CONTEXT_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 // ── 参数枚举 ──
 
 export const VALID_INTENTS = [
-  'draw', 'edit', 'delete', 'undo', 'redo', 'clear', 'export', 'help', 'sleep', 'wake',
+  'draw', 'edit', 'delete', 'undo', 'redo', 'clear', 'export', 'help', 'sleep', 'wake', 'freehand',
 ] as const;
 
 export const VALID_SHAPES = ['circle', 'rect', 'triangle', 'line'] as const;

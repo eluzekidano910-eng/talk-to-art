@@ -13,7 +13,8 @@ export type CommandIntent =
   | 'export'
   | 'help'
   | 'sleep'
-  | 'wake';
+  | 'wake'
+  | 'freehand';
 
 /** 解析后的命令 */
 export interface Command {

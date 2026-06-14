@@ -371,6 +371,30 @@ export class CanvasEngine {
     }
   }
 
+  // -- Freehand Drawing --
+
+  startFreehand(options: { color?: string; width?: number } = {}): void {
+    this.canvas.isDrawingMode = true;
+    if (options.color) this.canvas.freeDrawingBrush.color = resolveColor(options.color);
+    if (options.width) this.canvas.freeDrawingBrush.width = options.width;
+    this.canvas.renderAll();
+  }
+
+  stopFreehand(): void {
+    this.canvas.isDrawingMode = false;
+    this.canvas.renderAll();
+  }
+
+  setBrushColor(color: string): void {
+    this.canvas.freeDrawingBrush.color = resolveColor(color);
+    this.canvas.renderAll();
+  }
+
+  setBrushWidth(width: number): void {
+    this.canvas.freeDrawingBrush.width = width;
+    this.canvas.renderAll();
+  }
+
   resize(width: number, height: number): void {
     this.canvas.setDimensions({ width, height });
     this.canvas.renderAll();

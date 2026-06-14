@@ -36,6 +36,10 @@ function splitSentences(text: string): string[] {
 function recognizeIntent(text: string): CommandIntent | null {
   // 帮助
   if (/帮助|怎么用|支持|指令|help|功能|说明|教程/.test(text)) return 'help';
+  // 自由绘制（停止）-> 必须放在 sleep 之前
+  if (/停止画画|完成画|结束画|退出画笔/.test(text)) return 'freehand';
+  // 自由绘制（开始）-> 必须放在 wake 之前
+  if (/开始画画|自由画|随意画|自由绘制|使用画笔|手动画/.test(text)) return 'freehand';
   // 休眠
   if (/停止|关闭|休眠|结束|暂停|睡眠/.test(text)) return 'sleep';
   // 唤醒
@@ -63,6 +67,8 @@ function recognizeIntent(text: string): CommandIntent | null {
  */
 function extractParams(text: string, intent: CommandIntent): Record<string, unknown> {
   switch (intent) {
+    case 'freehand':
+      return extractFreehandParams(text);
     case 'draw':
       return extractDrawParams(text);
     case 'edit':
@@ -174,6 +180,8 @@ function fillDefaults(intent: CommandIntent, params: Record<string, unknown>): R
         count: 1,
         ...params,
       };
+    case 'freehand':
+      return params;
     default:
       return params;
   }

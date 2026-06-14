@@ -18,7 +18,7 @@ import {
 
 /** valid 集合（运行时校验用） */
 const VALID_INTENTS_SET = new Set([
-  'draw', 'edit', 'delete', 'undo', 'redo', 'clear', 'export', 'help', 'sleep', 'wake',
+  'draw', 'edit', 'delete', 'undo', 'redo', 'clear', 'export', 'help', 'sleep', 'wake', 'freehand',
 ]);
 const VALID_SHAPES_SET = new Set(['circle', 'rect', 'triangle', 'line']);
 const VALID_COLORS_SET = new Set([

@@ -104,8 +104,6 @@ export function SettingsPanel({ isOpen, onClose, onConfigChange, aiService }: Se
               className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-red-400/40 transition-colors">
               <option value="deepseek-chat">deepseek-chat</option>
               <option value="deepseek-reasoner">deepseek-reasoner</option>
-              <option value="deepseek-v4-pro">deepseek-v4-pro</option>
-              <option value="deepseek-v4-flash">deepseek-v4-flash</option>
             </select>
           </div>
           <div className="flex items-center justify-between">

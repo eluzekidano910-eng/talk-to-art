@@ -12,10 +12,11 @@ import type { Command } from './command';
 import type { DrawShapeOptions, ShapeSize, ShapePosition } from './canvas';
 import { CommandLog } from './components/CommandLog';
 import type { LogEntry } from './components/CommandLog';
- import { SoundPlayer } from './voice';
- import { AiService, AiInterpreter } from './ai';
- import { SettingsPanel } from './components/SettingsPanel';
- import type { AiConfig } from './ai';
+import { SoundPlayer } from './voice';
+import { AiService, AiInterpreter } from './ai';
+import { StatusBar } from './components';
+import { SettingsPanel } from './components/SettingsPanel';
+import type { AiConfig } from './ai';
 
 /**
  * 执行解析后的语音命令，在画布上绘制或操作
@@ -32,11 +33,12 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
       if (typeof params.position === 'string') options.position = params.position as ShapePosition;
       if (typeof params.semanticName === 'string') options.name = params.semanticName;
 
+      const _count = typeof params.count === 'number' ? params.count : 1;
       switch (shape) {
-        case 'circle': engine.drawCircle(options); break;
-        case 'rect': engine.drawRect(options); break;
-        case 'triangle': engine.drawTriangle(options); break;
-        case 'line': engine.drawLine(options); break;
+        case 'circle': for (let i = 0; i < _count; i++) { engine.drawCircle(options); } break;
+        case 'rect': for (let i = 0; i < _count; i++) { engine.drawRect(options); } break;
+        case 'triangle': for (let i = 0; i < _count; i++) { engine.drawTriangle(options); } break;
+        case 'line': for (let i = 0; i < _count; i++) { engine.drawLine(options); } break;
         default: return false;
       }
       return true;
@@ -65,6 +67,8 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
    case 'export':
      engine.exportPNG();
       return true;
+    case 'help':
+      return true;
     default:
       return false;
     }
@@ -82,6 +86,7 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
  const aiEnabledRef = useRef(false);
  const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsKey, setSettingsKey] = useState(0);
+  const [isFreehand, setIsFreehand] = useState(false);
 
   const [supported, setSupported] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
@@ -170,8 +175,21 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
       }
 
       // 执行命令，跟踪是否全部成功
+      // Handle freehand separately
+      const fhCmd = commands.find(c => c.intent === 'freehand');
+      if (fhCmd) {
+        const action = (fhCmd.params?.action) ?? 'start';
+        if (action === 'start') {
+          engine.startFreehand({ color: fhCmd.params?.color, width: fhCmd.params?.width });
+          setIsFreehand(true);
+        } else {
+          engine.stopFreehand();
+          setIsFreehand(false);
+        }
+      }
       let allOk = true;
       for (const cmd of commands) {
+        if (cmd.intent === 'freehand') continue;
         if (!executeCanvasCommand(engine, cmd)) allOk = false;
       }
 
@@ -191,65 +209,6 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
         setVoiceState('listening');
       }
     })();
-    const commands = parser.parse(voiceText);
-
-    // 空命令 → 音效 + 错误日志
-    if (commands.length === 0) {
-      soundPlayerRef.current?.play('empty');
-      setLogEntries(prev => [...prev, {
-        id: ++logIdRef.current, rawText: voiceText, commands: [],
-        status: 'error', error: '未识别为有效指令',
-      }].slice(-50));
-      return;
-    }
-
-    // 语音控制：休眠/唤醒（直接操作识别器，不经过画布）
-    if (commands.some(c => c.intent === 'sleep' || c.intent === 'wake')) {
-      const isSleep = commands.some(c => c.intent === 'sleep');
-      if (isSleep) {
-        isAwakeRef.current = false;
-        if (/停止|关闭/.test(voiceText)) {
-          recognizerRef.current?.stop();
-          setVoiceState('idle');
-        } else {
-          setVoiceState('standby');
-        }
-      } else {
-        isAwakeRef.current = true;
-        recognizerRef.current?.start();
-        setVoiceState('listening');
-      }
-      soundPlayerRef.current?.play('ready');
-      setLogEntries(prev => [...prev, {
-        id: ++logIdRef.current, rawText: voiceText,
-        commands: commands.map(c => ({ intent: c.intent, params: {} })),
-        status: 'success',
-      }].slice(-50));
-      if (recognizerRef.current?.isListening()) setVoiceState('listening');
-      return;
-    }
-
-    // 执行命令，跟踪是否全部成功
-    let allOk = true;
-    for (const cmd of commands) {
-      if (!executeCanvasCommand(engine, cmd)) allOk = false;
-    }
-
-    // 音效反馈（commit 2/3）
-    soundPlayerRef.current?.play(allOk ? 'success' : 'error');
-
-    // 添加到命令日志
-    setLogEntries(prev => [...prev, {
-      id: ++logIdRef.current, rawText: voiceText,
-      commands: commands.map(c => ({ intent: c.intent, params: c.params ?? {} })),
-      status: allOk ? 'success' : 'error',
-      error: allOk ? undefined : '部分命令执行失败',
-    }].slice(-50));
-
-    // 如果识别器仍在监听，恢复为 listening 状态
-    if (recognizerRef.current?.isListening()) {
-      setVoiceState('listening');
-    }
   }, [isFinal, voiceText]);
 
   // 获取或创建识别器实例
@@ -369,8 +328,6 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
           {initError}
         </div>
       )}
-
-      {/* 设置按钮 */}
       <button
         onClick={() => { setSettingsKey(k => k + 1); setSettingsOpen(true); }}
         className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center

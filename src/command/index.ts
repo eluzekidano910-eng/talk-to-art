@@ -1,2 +1,2 @@
 export { CommandParser } from './CommandParser';
-export type { Command, CommandIntent, ShapeType, ParseResult, NormalizedToken } from './types';
+export type { Command, CommandIntent, ShapeType, ParseResult, NormalizedToken, FreehandAction } from './types';
