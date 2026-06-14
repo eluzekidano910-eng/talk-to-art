@@ -18,10 +18,15 @@ import { StatusBar } from './components';
 import { SettingsPanel } from './components/SettingsPanel';
 import type { AiConfig } from './ai';
 
+/** 异步延迟工具 */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * 执行解析后的语音命令，在画布上绘制或操作
  */
-function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPlayer?: SoundPlayer): boolean {
+async function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPlayer?: SoundPlayer): Promise<boolean> {
   const params = cmd.params ?? {};
 
   switch (cmd.intent) {
@@ -95,8 +100,9 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPlayer?: 
       const sceneKey = typeof params.scene === 'string' ? params.scene : null;
       if (!sceneKey) return false;
       const subCommands = expandSceneTemplate(sceneKey);
-      for (const sub of subCommands) {
-        executeCanvasCommand(engine, sub, soundPlayer);
+      for (let i = 0; i < subCommands.length; i++) {
+        if (i > 0) await delay(600);
+        await executeCanvasCommand(engine, subCommands[i], soundPlayer);
       }
       return subCommands.length > 0;
     }
@@ -216,7 +222,7 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command, soundPlayer?: 
       let allOk = true;
      for (const cmd of commands) {
         if (cmd.intent === 'freehand') continue;
-        if (!executeCanvasCommand(engine, cmd, soundPlayerRef.current)) allOk = false;
+        if (!await executeCanvasCommand(engine, cmd, soundPlayerRef.current)) allOk = false;
       }
 
       // 音效反馈
