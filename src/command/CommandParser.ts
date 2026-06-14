@@ -126,7 +126,7 @@ function extractEditParams(text: string): Record<string, unknown> {
 
   if (/所有|全部|全选/.test(text)) {
     params.selectAll = true;
-    if (/全选/.test(text)) params.target = 'all';
+    params.target = 'all';
   }
 
   if (/变(大|长|宽|高)/.test(text) || /放大/.test(text)) params.size = 'large';

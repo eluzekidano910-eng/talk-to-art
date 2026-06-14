@@ -212,7 +212,14 @@ export class CanvasEngine {
   findObjects(target: string): any[] {
     const all = this.canvas.getObjects();
     if (target === 'last') return all.length > 0 ? [all[all.length - 1]] : [];
-    if (target === 'all') return [...all];
+    if (target === 'all') {
+      const result = [...all];
+      const active = this.canvas.getActiveObject();
+      if (active && active.type === 'activeselection' && (active as any)._objects) {
+        result.push(...(active as any)._objects);
+      }
+      return result;
+    }
     if (target === 'selected') {
       const active = this.canvas.getActiveObject();
       return active ? [active] : [];
@@ -294,7 +301,7 @@ export class CanvasEngine {
     }
 
     // 自动选中被操作的对象（便于视觉反馈）
-    if (objects.length > 0) {
+    if (target !== 'all' && objects.length > 0) {
       this.canvas.discardActiveObject();
       if (changes.selectAll && objects.length > 1) {
         const sel = new ActiveSelection(objects, { canvas: this.canvas });
@@ -332,8 +339,14 @@ export class CanvasEngine {
     if (objects.length === 0) return false;
     if (target === 'all') {
       this.canvas.discardActiveObject();
+      if (objects.length > 1) {
+        const sel = new ActiveSelection(objects, { canvas: this.canvas });
+        this.canvas.setActiveObject(sel);
+      } else {
+        this.canvas.setActiveObject(objects[0]);
+      }
       this.canvas.renderAll();
-      return objects.length > 0;
+      return true;
     }
     this.canvas.discardActiveObject();
     if (objects.length > 1) {
