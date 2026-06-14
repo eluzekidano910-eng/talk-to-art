@@ -100,14 +100,13 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const logIdRef = useRef(0);
   const isAwakeRef = useRef(false);
-  const autoStartedRef = useRef(false);
 
   // 语音最终结果 → 解析 → 执行 → 音效 + 日志
   useEffect(() => {
     if (!isFinal || !voiceText) return;
 
     // 唤醒词检测：说"小A小A"或"打开程序"激活
-    if ((/小A[,，、]?小A/.test(voiceText) || /打开程序/.test(voiceText)) && !isAwakeRef.current) {
+    if ((/小[aA诶][,，、]?小[aA诶]/i.test(voiceText) || /打开程序/.test(voiceText) || /^小[aA诶]/.test(voiceText)) && !isAwakeRef.current) {
       isAwakeRef.current = true;
       soundPlayerRef.current?.play('ready');
       setLogEntries(prev => [...prev, {
@@ -151,20 +150,14 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
         return;
       }
 
-      // 语音控制：休眠/唤醒（直接操作识别器，不经过画布）
+      // 语音控制：休眠/唤醒（仅切换状态，识别器始终保持运行）
       if (commands.some(c => c.intent === 'sleep' || c.intent === 'wake')) {
         const isSleep = commands.some(c => c.intent === 'sleep');
         if (isSleep) {
           isAwakeRef.current = false;
-          if (/停止|关闭/.test(voiceText)) {
-            recognizerRef.current?.stop();
-            setVoiceState('idle');
-          } else {
-            setVoiceState('standby');
-          }
+          setVoiceState('standby');
         } else {
           isAwakeRef.current = true;
-          recognizerRef.current?.start();
           setVoiceState('listening');
         }
         soundPlayerRef.current?.play('ready');
@@ -173,7 +166,6 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
           commands: commands.map(c => ({ intent: c.intent, params: {} })),
           status: 'success',
         }].slice(-50));
-        if (recognizerRef.current?.isListening()) setVoiceState('listening');
         return;
       }
 
@@ -261,22 +253,19 @@ function executeCanvasCommand(engine: CanvasEngine, cmd: Command): boolean {
     return recognizerRef.current;
   }, []);
 
-  // 首次点击页面任意位置自动启动麦克风（浏览器需要用户手势）
+  // 进入页面自动启动麦克风（浏览器可能需要用户首次手势授权）
   useEffect(() => {
-    const handler = () => {
-      if (autoStartedRef.current) return;
-      autoStartedRef.current = true;
-      const rec = getRecognizer();
-      if (rec?.isReady() && !rec.isListening()) {
-        setVoiceText('');
-        setIsFinal(false);
+    const rec = getRecognizer();
+    if (rec?.isReady() && !rec.isListening()) {
+      setVoiceText('');
+      setIsFinal(false);
+      try {
         rec.start();
         setVoiceState('standby');
+      } catch {
+        // 无用户手势时优雅失败，用户点击麦克风按钮即可手动启动
       }
-      document.removeEventListener('click', handler);
-    };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
+    }
   }, [getRecognizer]);
 
   // 切换麦克风
