@@ -1,16 +1,22 @@
 import type { VoiceRecognizerConfig, VoiceRecognizerCallbacks, VoiceResult, VoiceState } from './types';
 
+/** 用户不说话多少毫秒后自动停止 */
+const SILENCE_TIMEOUT = 8000;
+
 /**
  * 浏览器语音识别服务层
  * 封装 Web Speech API (SpeechRecognition)，提供：
  * - 实时逐字识别（interim results）
  * - 最终结果回调
  * - 连续/单次两种模式
+ * - 5 秒静音自动停止
  * - 错误优雅降级
  */
 export class VoiceRecognizer {
   private recognition: SpeechRecognition | null = null;
   private _state: VoiceState = 'idle';
+  private _active = false;
+  private _silenceTimer: ReturnType<typeof setTimeout> | null = null;
   private callbacks: VoiceRecognizerCallbacks = {};
   private config: Required<VoiceRecognizerConfig>;
 
@@ -34,7 +40,15 @@ export class VoiceRecognizer {
       return;
     }
 
-    this.recognition = new SR();
+    try {
+      this.recognition = new SR();
+    } catch (err) {
+      console.warn('[VoiceRecognizer] SpeechRecognition 构造失败', err);
+      return;
+    }
+
+    if (!this.recognition) return;
+
     this.recognition.lang = this.config.lang;
     this.recognition.continuous = this.config.continuous;
     this.recognition.interimResults = this.config.interimResults;
@@ -48,9 +62,14 @@ export class VoiceRecognizer {
     return this._state;
   }
 
+  /** 实例是否构造成功 */
+  isReady(): boolean {
+    return this.recognition !== null;
+  }
+
   /** 是否正在监听 */
   isListening(): boolean {
-    return this._state === 'listening';
+    return this._active || this._state === 'listening';
   }
 
   /** 开始监听 */
@@ -59,27 +78,29 @@ export class VoiceRecognizer {
       this.callbacks.onError?.('浏览器不支持语音识别');
       return;
     }
-    if (this._state === 'listening') return;
+    if (this._active) return;
 
-    try {
-      this.recognition.start();
-    } catch (_err) {
-      // 可能识别器已在运行中，尝试 abort 后重试
-      try { this.recognition.abort(); } catch { /* ignore */ }
-      setTimeout(() => {
-        try { this.recognition?.start(); } catch { /* ignore */ }
-      }, 100);
-    }
+    this._active = true;
+    this.startSilenceTimer();
+
+    this.startRecognition();
   }
 
   /** 停止监听（处理完已有语音） */
   stop(): void {
-    try { this.recognition?.stop(); } catch { /* ignore */ }
+    this._active = false;
+    this.clearSilenceTimer();
+    try { this.recognition?.abort(); } catch { /* ignore */ }
+    this.setState('idle');
+    this.callbacks.onEnd?.();
   }
 
   /** 立即中止（丢弃已有语音） */
   abort(): void {
+    this._active = false;
+    this.clearSilenceTimer();
     try { this.recognition?.abort(); } catch { /* ignore */ }
+    this.setState('idle');
   }
 
   /** 更新回调 */
@@ -94,26 +115,77 @@ export class VoiceRecognizer {
     this.callbacks = {};
   }
 
+  // ── 静音计时器 ──
+
+  private startSilenceTimer(): void {
+    this.clearSilenceTimer();
+    this._silenceTimer = setTimeout(() => {
+      // 8 秒没有任何识别结果 → 自动停止
+      this.stop();
+    }, SILENCE_TIMEOUT);
+  }
+
+  private clearSilenceTimer(): void {
+    if (this._silenceTimer !== null) {
+      clearTimeout(this._silenceTimer);
+      this._silenceTimer = null;
+    }
+  }
+
+  private startRecognition(): void {
+    if (!this.recognition || !this._active) return;
+    try {
+      this.recognition.start();
+    } catch (err) {
+      console.warn('[VoiceRecognizer] start failed', err);
+      this.stop();
+    }
+  }
+
   // ── 内部事件绑定 ──
 
   private bindEvents(): void {
     if (!this.recognition) return;
 
     this.recognition.onstart = () => {
+      console.log('[VoiceRecognizer] start');
       this.setState('listening');
       this.callbacks.onStart?.();
     };
 
     this.recognition.onend = () => {
-      // continuous=true 时 onend 仅在不说话超时后触发，
-      // 我们需要在非 continuous 模式下自动重启以保持持续对话
-      if (this._state === 'listening' && !this.config.continuous) {
-        // 非连续模式：说完一句自动重启，等待下一句
-        this.setState('idle');
-      } else {
-        this.setState('idle');
+      console.log('[VoiceRecognizer] end');
+      const wasActive = this._active;
+      this._active = false;
+      this.clearSilenceTimer();
+      this.setState('idle');
+      if (wasActive) {
+        this.callbacks.onEnd?.();
       }
-      this.callbacks.onEnd?.();
+    };
+
+    this.recognition.onaudiostart = () => {
+      console.log('[VoiceRecognizer] audio start');
+    };
+
+    this.recognition.onaudioend = () => {
+      console.log('[VoiceRecognizer] audio end');
+    };
+
+    this.recognition.onsoundstart = () => {
+      console.log('[VoiceRecognizer] sound start');
+    };
+
+    this.recognition.onsoundend = () => {
+      console.log('[VoiceRecognizer] sound end');
+    };
+
+    this.recognition.onspeechstart = () => {
+      console.log('[VoiceRecognizer] speech start');
+    };
+
+    this.recognition.onspeechend = () => {
+      console.log('[VoiceRecognizer] speech end');
     };
 
     this.recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -134,21 +206,25 @@ export class VoiceRecognizer {
         maxConfidence = Math.max(maxConfidence, confidence);
       }
 
-      // 优先发送最终结果，否则发送中间结果
       if (finalText) {
+        console.log('[VoiceRecognizer] final result', finalText.trim());
         const voiceResult: VoiceResult = {
           text: finalText.trim(),
           isFinal: true,
           confidence: maxConfidence,
         };
         this.callbacks.onResult?.(voiceResult);
+        // 收到最终结果 → 重置静音倒计时
+        this.startSilenceTimer();
       } else if (interimText) {
+        console.log('[VoiceRecognizer] interim result', interimText.trim());
         const voiceResult: VoiceResult = {
           text: interimText.trim(),
           isFinal: false,
           confidence: maxConfidence,
         };
         this.callbacks.onResult?.(voiceResult);
+        this.startSilenceTimer();
       }
     };
 
@@ -166,17 +242,38 @@ export class VoiceRecognizer {
       const message = errorMap[event.error] ?? `语音识别错误: ${event.error}`;
       console.warn(`[VoiceRecognizer] ${message}`);
 
-      // no-speech 不算真正错误，静默处理
-      if (event.error === 'no-speech') {
-        // 非连续模式下自动重启
-        if (!this.config.continuous && this._state === 'listening') {
-          setTimeout(() => {
-            try { this.recognition?.start(); } catch { /* ignore */ }
-          }, 300);
-        }
+      if (event.error === 'aborted') {
         return;
       }
 
+      if (!this._active) return;
+
+      // 语言不支持 → 自动降级尝试
+      if (event.error === 'language-not-supported') {
+        const fallbacks = ['zh-CN', 'cmn-Hans-CN', 'zh', 'en-US'];
+        const current = this.recognition?.lang ?? '';
+        const idx = fallbacks.indexOf(current);
+        if (idx >= 0 && idx < fallbacks.length - 1) {
+          const next = fallbacks[idx + 1];
+          console.log(`[VoiceRecognizer] 语言 ${current} 不支持，降级: ${next}`);
+          this.recognition!.lang = next;
+          this.stop();
+          this.callbacks.onError?.(`不支持语言 ${current}，已切换到 ${next}，请重新点击麦克风`);
+          return;
+        }
+        this.stop();
+        this.setState('error');
+        this.callbacks.onError?.('所有中文语言代码均不被该浏览器支持');
+        return;
+      }
+
+      // no-speech 不算真正错误，静默处理
+      if (event.error === 'no-speech') {
+        this.stop();
+        return;
+      }
+
+      this.stop();
       this.setState('error');
       this.callbacks.onError?.(message);
     };
